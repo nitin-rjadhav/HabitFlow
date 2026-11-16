@@ -25,7 +25,8 @@ apply plugin: 'com.google.devtools.ksp'
 apply plugin: 'app.cash.licensee'
 
 ext {
-    PACKAGE_NAME = "com.ofalvai.habittracker"\n    HABITFLOW_APPLICATION_ID = "com.nitinjadhav.habitflow"
+    PACKAGE_NAME = "com.ofalvai.habittracker"
+    HABITFLOW_APPLICATION_ID = "com.nitinjadhav.habitflow"
     URL_PRIVACY_POLICY = "https://github.com/nitin-rjadhav/HabitFlow"
     URL_SOURCE_CODE = "https://github.com/nitin-rjadhav/HabitFlow"
 }
