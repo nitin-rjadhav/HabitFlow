@@ -1,22 +1,19 @@
 name: Import HabitBuilder upstream
 on:
-  workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  import-upstream:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'chore: initialize HabitFlow bootstrap workflow'
+  import:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out HabitFlow
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
-      - name: Import upstream with full Git history
-        shell: bash
+      - name: Import upstream
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -24,18 +21,4 @@ jobs:
           git remote add upstream https://github.com/ofalvai/HabitBuilder.git
           git fetch upstream main
           git merge --no-edit --allow-unrelated-histories upstream/main
-          mkdir -p docs
-          cat > docs/UPSTREAM.md <<'EOF'
-          # Upstream provenance
-
-          - Project: [ofalvai/HabitBuilder](https://github.com/ofalvai/HabitBuilder)
-          - Original license: Apache License 2.0 (see root LICENSE)
-          - Initial reviewed upstream commit: `38ad6b2b3de02c42e180994777c08ac88a27f249`
-          - Import method: Git merge with unrelated histories, preserving upstream history
-
-          Do not remove copyright notices. Audit third-party dependencies, app icons, screenshots,
-          analytics/crash reporting and other branded assets before any commercial release.
-          EOF
-          git add docs/UPSTREAM.md
-          git commit -m "docs: record HabitBuilder upstream provenance"
           git push origin HEAD:main
