@@ -1,8 +1,5 @@
 name: Import HabitBuilder upstream
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 permissions:
   contents: write
@@ -13,12 +10,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Import upstream
+      - name: Import source without upstream CI workflow
+        shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/ofalvai/HabitBuilder.git
-          git fetch upstream main
-          git merge --no-edit --allow-unrelated-histories upstream/main
+          git fetch --depth=1 upstream 38ad6b2b3de02c42e180994777c08ac88a27f249
+          git archive FETCH_HEAD | tar -xf -
+          rm -f .github/workflows/build-and-test.yml
+          mkdir -p docs
+          cat > docs/UPSTREAM.md <<'EOF'
+          # HabitBuilder source provenance
+
+          - Upstream: https://github.com/ofalvai/HabitBuilder
+          - Source snapshot commit: `38ad6b2b3de02c42e180994777c08ac88a27f249`
+          - License: Apache License 2.0 (see root LICENSE)
+          - Import: source snapshot, excluding upstream GitHub Actions workflow
+          - Upstream Git history: not included in this snapshot; consult upstream repository
+
+          Retain upstream copyright notices and third-party license attributions.
+          Audit app identifiers, brand assets, telemetry and signing before release.
+          EOF
+          git add -A
+          git commit -m "chore: import HabitBuilder source snapshot"
           git push origin HEAD:main
