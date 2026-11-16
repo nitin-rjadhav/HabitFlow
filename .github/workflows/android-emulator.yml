@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: habitflow-emulator-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   emulator-smoke:
     runs-on: ubuntu-latest
@@ -56,12 +60,13 @@ jobs:
           disk-size: 4096M
           disable-animations: true
           emulator-boot-timeout: 600
-          script: bash scripts/emulator-smoke.sh
+          script: bash -x scripts/emulator-smoke.sh
       - name: Collect emulator diagnostics
         if: always()
         run: |
           mkdir -p emulator-evidence
-          adb logcat -d -t 1500 > emulator-evidence/logcat-final.txt 2>/dev/null || true
+          timeout --signal=TERM --kill-after=5s 15s adb logcat -d -t 1500 > emulator-evidence/logcat-final.txt 2>/dev/null || true
+          echo "Diagnostics collection finished (ADB bounded to 15 seconds)"
       - name: Upload screenshots, logs, and instrumented test reports
         if: always()
         uses: actions/upload-artifact@v4
