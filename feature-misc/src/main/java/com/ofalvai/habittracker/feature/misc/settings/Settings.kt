@@ -142,10 +142,6 @@ fun SettingsScreen(
                 name = stringResource(R.string.settings_item_licenses),
                 onClick = onLicensesClick
             )
-            NavigationSetting(
-                name = stringResource(R.string.settings_item_privacy_policy),
-                onClick = onPrivacyClick
-            )
 
             debugSettings() // no-op in release variant
         }
