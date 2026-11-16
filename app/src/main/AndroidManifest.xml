@@ -33,12 +33,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <meta-data
-            android:name="com.bugsnag.android.API_KEY"
-            android:value="${api_key_bugsnag}" />
-        <meta-data
-            android:name="com.bugsnag.android.BUILD_UUID"
-            android:value="${build_uuid}" />
     </application>
 
 </manifest>
