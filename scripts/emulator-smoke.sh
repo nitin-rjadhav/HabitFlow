@@ -14,8 +14,10 @@ fi
 APK="${APKS[0]}"
 echo "Using APK: $APK"
 adb install -r "$APK"
-PACKAGE=$(aapt dump badging "$APK" | awk -F"'" '/^package: name=/{print $2; exit}')
-test -n "$PACKAGE"
+# Debug application ID is defined by app/build.gradle: applicationId + .debug suffix.
+PACKAGE="com.nitinjadhav.habitflow.debug"
+adb shell pm path "$PACKAGE" > emulator-evidence/installed-package.txt
+test -s emulator-evidence/installed-package.txt
 echo "Installed package: $PACKAGE"
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 sleep 8
