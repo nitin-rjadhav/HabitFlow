@@ -47,7 +47,12 @@ echo "Launch smoke check passed" | tee emulator-evidence/launch-result.txt
 timeout --signal=TERM --kill-after=30s 10m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
 if [[ "${RUN_COMPOSE_UI:-false}" == "true" ]]; then
   echo "Running optional Compose dashboard instrumentation tests"
-  timeout --signal=TERM --kill-after=30s 8m ./gradlew --no-daemon :feature-dashboard:connectedDebugAndroidTest
+  if [[ -n "${COMPOSE_TEST_METHOD:-}" ]]; then
+    echo "Running isolated Compose test: $COMPOSE_TEST_METHOD"
+    timeout --signal=TERM --kill-after=30s 8m ./gradlew --no-daemon :feature-dashboard:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.ofalvai.habittracker.feature.dashboard.AddHabitTest#$COMPOSE_TEST_METHOD"
+  else
+    timeout --signal=TERM --kill-after=30s 8m ./gradlew --no-daemon :feature-dashboard:connectedDebugAndroidTest
+  fi
 else
   echo "Compose dashboard tests skipped in core smoke run (known emulator hang)"
 fi
