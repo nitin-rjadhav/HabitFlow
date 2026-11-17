@@ -59,7 +59,8 @@ done
 # Open Android's app-info page for this exact package. Unlike a launcher swipe,
 # this gives a deterministic screen containing the installed app's icon and label.
 if adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d "package:$PACKAGE"; then
-  sleep 3
+  sleep 8
+  adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity" > emulator-evidence/app-info-activity.txt || true
   if timeout --signal=TERM --kill-after=5s 20s adb exec-out screencap -p > emulator-evidence/package-app-info.png; then
     if [[ ! -s emulator-evidence/package-app-info.png ]] || [[ "$(head -c 4 emulator-evidence/package-app-info.png | od -An -tx1 | tr -d '[:space:]')" != "89504e47" ]]; then
       rm -f emulator-evidence/package-app-info.png
