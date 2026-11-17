@@ -62,7 +62,7 @@ try:
     time.sleep(2)
     # Name field receives focus on entering the form.
     adb("shell", "input", "text", "Meditation")
-    tap(find("Save"))
+    tap(find("Create habit"))
     time.sleep(4)
     assert_count("0 of 1 completed")
     screenshot("progress-zero-of-one.png")
