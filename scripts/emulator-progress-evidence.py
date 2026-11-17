@@ -23,7 +23,7 @@ def nodes():
 
 def center(node):
     b = node.attrib.get("bounds", "")
-    values = list(map(int, re.findall(r"\\d+", b)))
+    values = list(map(int, re.findall(r"\d+", b)))
     if len(values) != 4:
         raise RuntimeError("No bounds: " + str(node.attrib))
     return ((values[0] + values[2]) // 2, (values[1] + values[3]) // 2)
@@ -40,7 +40,7 @@ def find(text):
 
 def screenshot(name):
     data = adb("exec-out", "screencap", "-p", timeout=30)
-    if not data.startswith(b"\\x89PNG"):
+    if not data.startswith(b"\x89PNG"):
         raise RuntimeError("Invalid screenshot")
     (OUT / name).write_bytes(data)
 
@@ -89,5 +89,5 @@ except Exception as exc:
     except Exception:
         pass
 finally:
-    (OUT / "progress-check.txt").write_text("\\n".join(report) + "\\n")
-    print("\\n".join(report))
+    (OUT / "progress-check.txt").write_text("\n".join(report) + "\n")
+    print("\n".join(report))
