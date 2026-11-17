@@ -42,6 +42,30 @@ if [[ "$SCREENSHOT_OK" != "true" ]]; then
   rm -f emulator-evidence/launch.png
   echo "::warning::Could not capture screenshot; continuing with required tests"
 fi
+# Capture the launcher/home screen separately to review the installed app icon.
+# This is visual evidence only: do not fail database smoke tests on screenshot issues.
+adb shell input keyevent KEYCODE_HOME || true
+sleep 3
+for attempt in 1 2 3; do
+  echo "Capturing home screen screenshot (attempt $attempt/3)"
+  if timeout --signal=TERM --kill-after=5s 20s adb exec-out screencap -p > emulator-evidence/home-screen.png; then
+    if [[ -s emulator-evidence/home-screen.png ]] && [[ "$(head -c 4 emulator-evidence/home-screen.png | od -An -tx1 | tr -d ' \\n')" == "89504e47" ]]; then
+      break
+    fi
+  fi
+  rm -f emulator-evidence/home-screen.png
+  sleep 2
+done
+# The launcher may not show the icon on the default home page; capture app drawer.
+adb shell input swipe 500 1700 500 400 400 || true
+sleep 2
+if timeout --signal=TERM --kill-after=5s 20s adb exec-out screencap -p > emulator-evidence/app-drawer.png; then
+  if [[ ! -s emulator-evidence/app-drawer.png ]] || [[ "$(head -c 4 emulator-evidence/app-drawer.png | od -An -tx1 | tr -d ' \\n')" != "89504e47" ]]; then
+    rm -f emulator-evidence/app-drawer.png
+  fi
+else
+  rm -f emulator-evidence/app-drawer.png
+fi
 timeout --signal=TERM --kill-after=5s 15s adb logcat -d -t 1500 > emulator-evidence/logcat.txt 2>/dev/null || true
 echo "Launch smoke check passed" | tee emulator-evidence/launch-result.txt
 timeout --signal=TERM --kill-after=30s 10m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
