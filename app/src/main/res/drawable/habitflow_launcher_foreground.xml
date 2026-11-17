@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HabitFlow original streak-flame artwork. Adaptive icon safe zone: central 72dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FF4A3E" android:pathData="M54,87 C36,87 27,74 28,60 C29,48 37,40 44,35 C43,43 47,46 49,47 C59,36 62,25 59,18 C77,28 82,42 77,54 C83,50 84,47 84,45 C92,65 78,87 54,87 Z"/>
+    <path android:fillColor="#FF9C19" android:pathData="M31,66 C30,51 42,43 46,40 C45,48 49,50 52,51 C62,40 65,29 63,25 C77,39 79,50 75,60 C81,57 83,52 84,49 C87,67 72,83 55,84 C41,84 33,76 31,66 Z"/>
+    <path android:fillColor="#FFD642" android:pathData="M38,58 C44,47 60,39 62,23 C69,34 70,44 65,49 C56,57 47,58 38,67 Z"/>
+    <path android:fillColor="#FFFFFF" android:strokeColor="#FFFFFF" android:strokeWidth="5.5" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M42,64 L51,73 L70,53"/>
+</vector>

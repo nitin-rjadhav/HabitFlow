@@ -23,13 +23,12 @@ plugins {
 
 apply plugin: 'com.google.devtools.ksp'
 apply plugin: 'app.cash.licensee'
-apply plugin: 'com.bugsnag.android.gradle'
 
 ext {
     PACKAGE_NAME = "com.ofalvai.habittracker"
-    API_KEY_BUGSNAG = "2e13a542ae3ed09ad42a5c82444925af"
-    URL_PRIVACY_POLICY = "https://habit-builder-97708.web.app/privacy-policy.html"
-    URL_SOURCE_CODE = "https://github.com/ofalvai/HabitTracker"
+    HABITFLOW_APPLICATION_ID = "com.nitinjadhav.habitflow"
+    URL_PRIVACY_POLICY = "https://github.com/nitin-rjadhav/HabitFlow"
+    URL_SOURCE_CODE = "https://github.com/nitin-rjadhav/HabitFlow"
 }
 
 def useReleaseKeystore = rootProject.file("release/app-release.jks").exists()
@@ -37,11 +36,10 @@ def useReleaseKeystore = rootProject.file("release/app-release.jks").exists()
 android {
     namespace PACKAGE_NAME
     defaultConfig {
-        applicationId PACKAGE_NAME
+        applicationId HABITFLOW_APPLICATION_ID
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        manifestPlaceholders += ["api_key_bugsnag": "${API_KEY_BUGSNAG}"]
         buildConfigField("String", "URL_PRIVACY_POLICY", "\"$URL_PRIVACY_POLICY\"")
         buildConfigField("String", "URL_SOURCE_CODE", "\"$URL_SOURCE_CODE\"")
     }
@@ -114,10 +112,6 @@ licensee {
     allow("BSD-3-Clause")
     allowUrl("https://github.com/kizitonwose/calendar/blob/main/LICENSE.md")
     allowUrl("https://opensource.org/licenses/MIT")
-}
-
-bugsnag {
-    overwrite = true
 }
 
 dependencies {

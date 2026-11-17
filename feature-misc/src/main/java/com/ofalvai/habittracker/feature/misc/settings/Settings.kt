@@ -124,11 +124,6 @@ fun SettingsScreen(
                     onCheckedChange = onDynamicColorChange
                 )
             }
-            SwitchSetting(
-                name = stringResource(R.string.settings_item_crash_reporting),
-                checked = crashReportingEnabled,
-                onCheckedChange = onCrashReportingChange
-            )
 
             SettingHeader(name = stringResource(R.string.settings_header_about))
             TextRow(
@@ -146,10 +141,6 @@ fun SettingsScreen(
             NavigationSetting(
                 name = stringResource(R.string.settings_item_licenses),
                 onClick = onLicensesClick
-            )
-            NavigationSetting(
-                name = stringResource(R.string.settings_item_privacy_policy),
-                onClick = onPrivacyClick
             )
 
             debugSettings() // no-op in release variant
