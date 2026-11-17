@@ -68,11 +68,16 @@ try:
     screenshot("progress-zero-of-one.png")
     # Android exposes each daily action with a relative date and toggle state.
     # Find today's circle via accessible text; long press is required by this app.
-    today = [n for n in nodes() if "today" in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).lower()]
-    if not today:
-        raise RuntimeError("Today's action circle not exposed in accessibility tree")
-    x, y = center(today[-1])
+    action_nodes = [n for n in nodes() if n.attrib.get("state-desc") and n.attrib.get("bounds")]
+    (OUT / "progress-actions-before.txt").write_text("\n".join(str(n.attrib) for n in action_nodes))
+    if not action_nodes:
+        raise RuntimeError("No accessible action toggles found")
+    # In the five-day layout the final/rightmost action is today's action.
+    # Prefer the action with the rightmost center instead of a generic 'Today' label.
+    target = max(action_nodes, key=lambda n: center(n)[0])
+    x, y = center(target)
     adb("shell", "input", "swipe", str(x), str(y), str(x), str(y), "1100")
+    (OUT / "progress-actions-after.txt").write_text("\n".join(str(n.attrib) for n in nodes() if n.attrib.get("state-desc")))
     time.sleep(3)
     assert_count("1 of 1 completed")
     screenshot("progress-one-of-one.png")
