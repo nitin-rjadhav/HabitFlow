@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p emulator-evidence
+# Include the checked-in widget preview in the evidence archive for visual review.
+cp feature-widgets/src/main/res/drawable/preview_today_widget.png emulator-evidence/widget-preview.png
 chmod +x ./gradlew
 ./gradlew --no-daemon :app:assembleDebug
 
