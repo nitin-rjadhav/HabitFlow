@@ -49,6 +49,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -228,9 +230,10 @@ private fun TodayProgress(habits: ImmutableList<HabitWithActions>) {
             )
         }
         Spacer(Modifier.height(8.dp))
+        val progressLabel = stringResource(R.string.dashboard_today_progress_count, summary.completed, summary.total)
         LinearProgressIndicator(
             progress = summary.fraction,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = progressLabel },
         )
         Spacer(Modifier.height(4.dp))
         Text(
