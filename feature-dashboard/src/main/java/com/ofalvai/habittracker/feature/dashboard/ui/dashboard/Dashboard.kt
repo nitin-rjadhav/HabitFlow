@@ -320,7 +320,7 @@ private fun DashboardPlaceholder(onAddHabitClick: () -> Unit) {
 /** Design-time preview with sample data; not an emulator screenshot. */
 @Preview(showBackground = true)
 @Composable
-private fun PreviewTodayProgress() {
+fun PreviewTodayProgress() {
     PreviewTheme {
         TodayProgress(TodayProgressState(completed = 3, total = 5))
     }
