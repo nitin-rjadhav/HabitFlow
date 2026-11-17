@@ -22,8 +22,26 @@ echo "Installed package: $PACKAGE"
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 sleep 8
 adb shell pidof "$PACKAGE" | tee emulator-evidence/app-pid.txt
-adb shell screencap -p /sdcard/habitflow-smoke.png
-adb pull /sdcard/habitflow-smoke.png emulator-evidence/launch.png
+# Screenshot evidence is best-effort; never block the required database tests.
+# exec-out avoids writing to /sdcard and a separate adb pull transfer.
+SCREENSHOT_OK=false
+for attempt in 1 2 3; do
+  echo "Capturing emulator screenshot (attempt $attempt/3)"
+  if timeout --signal=TERM --kill-after=5s 20s adb exec-out screencap -p > emulator-evidence/launch.png; then
+    if [[ -s emulator-evidence/launch.png ]] && [[ "$(head -c 4 emulator-evidence/launch.png | od -An -tx1 | tr -d ' \\n')" == "89504e47" ]]; then
+      SCREENSHOT_OK=true
+      break
+    fi
+    echo "::warning::Screenshot was empty or not a PNG"
+  else
+    echo "::warning::Screenshot capture failed on attempt $attempt"
+  fi
+  sleep 2
+done
+if [[ "$SCREENSHOT_OK" != "true" ]]; then
+  rm -f emulator-evidence/launch.png
+  echo "::warning::Could not capture screenshot; continuing with required tests"
+fi
 timeout --signal=TERM --kill-after=5s 15s adb logcat -d -t 1500 > emulator-evidence/logcat.txt 2>/dev/null || true
 echo "Launch smoke check passed" | tee emulator-evidence/launch-result.txt
 timeout --signal=TERM --kill-after=30s 10m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
