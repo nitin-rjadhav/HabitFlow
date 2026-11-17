@@ -28,7 +28,7 @@ SCREENSHOT_OK=false
 for attempt in 1 2 3; do
   echo "Capturing emulator screenshot (attempt $attempt/3)"
   if timeout --signal=TERM --kill-after=5s 20s adb exec-out screencap -p > emulator-evidence/launch.png; then
-    if [[ -s emulator-evidence/launch.png ]] && [[ "$(head -c 4 emulator-evidence/launch.png | od -An -tx1 | tr -d ' \\n')" == "89504e47" ]]; then
+    if [[ -s emulator-evidence/launch.png ]] && [[ "$(head -c 4 emulator-evidence/launch.png | od -An -tx1 | tr -d '[:space:]')" == "89504e47" ]]; then
       SCREENSHOT_OK=true
       break
     fi
@@ -49,7 +49,7 @@ sleep 3
 for attempt in 1 2 3; do
   echo "Capturing home screen screenshot (attempt $attempt/3)"
   if timeout --signal=TERM --kill-after=5s 20s adb exec-out screencap -p > emulator-evidence/home-screen.png; then
-    if [[ -s emulator-evidence/home-screen.png ]] && [[ "$(head -c 4 emulator-evidence/home-screen.png | od -An -tx1 | tr -d ' \\n')" == "89504e47" ]]; then
+    if [[ -s emulator-evidence/home-screen.png ]] && [[ "$(head -c 4 emulator-evidence/home-screen.png | od -An -tx1 | tr -d '[:space:]')" == "89504e47" ]]; then
       break
     fi
   fi
@@ -60,7 +60,7 @@ done
 adb shell input swipe 500 1700 500 400 400 || true
 sleep 2
 if timeout --signal=TERM --kill-after=5s 20s adb exec-out screencap -p > emulator-evidence/app-drawer.png; then
-  if [[ ! -s emulator-evidence/app-drawer.png ]] || [[ "$(head -c 4 emulator-evidence/app-drawer.png | od -An -tx1 | tr -d ' \\n')" != "89504e47" ]]; then
+  if [[ ! -s emulator-evidence/app-drawer.png ]] || [[ "$(head -c 4 emulator-evidence/app-drawer.png | od -An -tx1 | tr -d '[:space:]')" != "89504e47" ]]; then
     rm -f emulator-evidence/app-drawer.png
   fi
 else
