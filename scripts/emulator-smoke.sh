@@ -24,6 +24,12 @@ echo "Installed package: $PACKAGE"
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 sleep 8
 adb shell pidof "$PACKAGE" | tee emulator-evidence/app-pid.txt
+# Collect real populated-dashboard evidence; diagnostic failures are recorded separately.
+python3 scripts/emulator-progress-evidence.py || echo "::warning::Progress evidence script encountered an error"
+# Restore the app to the foreground for the existing smoke screenshots.
+adb shell am force-stop "$PACKAGE" || true
+adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
+sleep 3
 # Screenshot evidence is best-effort; never block the required database tests.
 # exec-out avoids writing to /sdcard and a separate adb pull transfer.
 SCREENSHOT_OK=false
