@@ -23,6 +23,9 @@
     <string name="addhabit_save">Create habit</string>
 
     <string name="dashboard_title">My habits</string>
+    <string name="dashboard_today_progress">Today</string>
+    <string name="dashboard_today_progress_count">%1$d of %2$d completed</string>
+    <string name="dashboard_today_progress_percent">%1$d%% complete</string>
     <string name="dashboard_change_layout">Change layout</string>
     <string name="dashboard_empty_label">You don\'t have any habits yet.</string>
     <string name="dashboard_toggle_help">Long press to toggle</string>
