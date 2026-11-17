@@ -54,6 +54,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import com.ofalvai.habittracker.core.common.OnboardingState
 import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.model.Habit
@@ -65,6 +66,7 @@ import com.ofalvai.habittracker.core.ui.component.ContentWithPlaceholder
 import com.ofalvai.habittracker.core.ui.component.ErrorView
 import com.ofalvai.habittracker.core.ui.state.Result
 import com.ofalvai.habittracker.core.ui.state.asEffect
+import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.core.ui.theme.AppTextStyle
 import com.ofalvai.habittracker.core.ui.theme.CoreIcons
 import com.ofalvai.habittracker.feature.dashboard.R
@@ -178,7 +180,7 @@ private fun LoadedDashboard(
         }
 
         if (habits.isNotEmpty()) {
-            TodayProgress(habits)
+            TodayProgress(todayProgress(habits))
         }
 
         ContentWithPlaceholder(
@@ -210,8 +212,7 @@ private fun LoadedDashboard(
 
 /** Summary of today's completion state, based on the final (today) action for each habit. */
 @Composable
-private fun TodayProgress(habits: ImmutableList<HabitWithActions>) {
-    val summary = todayProgress(habits)
+internal fun TodayProgress(summary: TodayProgressState) {
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
@@ -313,5 +314,14 @@ private fun DashboardPlaceholder(onAddHabitClick: () -> Unit) {
             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
             Text(stringResource(R.string.dashboard_create_habit_first))
         }
+    }
+}
+
+/** Design-time preview with sample data; not an emulator screenshot. */
+@Preview(showBackground = true)
+@Composable
+private fun PreviewTodayProgress() {
+    PreviewTheme {
+        TodayProgress(TodayProgressState(completed = 3, total = 5))
     }
 }
