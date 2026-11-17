@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -35,6 +36,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -173,6 +175,10 @@ private fun LoadedDashboard(
             Onboarding(onboardingState)
         }
 
+        if (habits.isNotEmpty()) {
+            TodayProgress(habits)
+        }
+
         ContentWithPlaceholder(
             showPlaceholder = habits.isEmpty(),
             placeholder = { DashboardPlaceholder(onAddHabitClick) }
@@ -197,6 +203,43 @@ private fun LoadedDashboard(
                 }
             }
         }
+    }
+}
+
+/** Summary of today's completion state, based on the final (today) action for each habit. */
+@Composable
+private fun TodayProgress(habits: ImmutableList<HabitWithActions>) {
+    val completed = habits.count { it.actions.lastOrNull()?.toggled == true }
+    val total = habits.size
+    val progress = completed.toFloat() / total
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = stringResource(R.string.dashboard_today_progress),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.dashboard_today_progress_count, completed, total),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        LinearProgressIndicator(
+            progress = progress,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.dashboard_today_progress_percent, (progress * 100).toInt()),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
