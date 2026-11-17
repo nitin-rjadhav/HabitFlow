@@ -56,6 +56,20 @@ for attempt in 1 2 3; do
   rm -f emulator-evidence/home-screen.png
   sleep 2
 done
+# Open Android's app-info page for this exact package. Unlike a launcher swipe,
+# this gives a deterministic screen containing the installed app's icon and label.
+if adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d "package:$PACKAGE"; then
+  sleep 3
+  if timeout --signal=TERM --kill-after=5s 20s adb exec-out screencap -p > emulator-evidence/package-app-info.png; then
+    if [[ ! -s emulator-evidence/package-app-info.png ]] || [[ "$(head -c 4 emulator-evidence/package-app-info.png | od -An -tx1 | tr -d '[:space:]')" != "89504e47" ]]; then
+      rm -f emulator-evidence/package-app-info.png
+    fi
+  else
+    rm -f emulator-evidence/package-app-info.png
+  fi
+fi
+adb shell input keyevent KEYCODE_HOME || true
+sleep 2
 # The launcher may not show the icon on the default home page; capture app drawer.
 adb shell input swipe 500 1700 500 400 400 || true
 sleep 2
