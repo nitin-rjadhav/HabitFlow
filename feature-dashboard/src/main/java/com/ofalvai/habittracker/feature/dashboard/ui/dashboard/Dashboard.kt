@@ -209,9 +209,7 @@ private fun LoadedDashboard(
 /** Summary of today's completion state, based on the final (today) action for each habit. */
 @Composable
 private fun TodayProgress(habits: ImmutableList<HabitWithActions>) {
-    val completed = habits.count { it.actions.lastOrNull()?.toggled == true }
-    val total = habits.size
-    val progress = completed.toFloat() / total
+    val summary = todayProgress(habits)
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
@@ -225,18 +223,18 @@ private fun TodayProgress(habits: ImmutableList<HabitWithActions>) {
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = stringResource(R.string.dashboard_today_progress_count, completed, total),
+                text = stringResource(R.string.dashboard_today_progress_count, summary.completed, summary.total),
                 style = MaterialTheme.typography.bodyMedium
             )
         }
         Spacer(Modifier.height(8.dp))
         LinearProgressIndicator(
-            progress = progress,
+            progress = summary.fraction,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = stringResource(R.string.dashboard_today_progress_percent, (progress * 100).toInt()),
+            text = stringResource(R.string.dashboard_today_progress_percent, summary.percent),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
