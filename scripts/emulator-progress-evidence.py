@@ -57,10 +57,30 @@ try:
     adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
     time.sleep(5)
     screenshot("progress-empty.png")
-    # Start from the empty dashboard; preserve existing smoke evidence independently.
-    tap(find("Create your first habit"))
+    # Record the actual launch screen even when onboarding or restored state differs.
+    initial_nodes = nodes()
+    (OUT / "progress-launch-hierarchy.txt").write_text(
+        "\n".join(str(n.attrib) for n in initial_nodes)
+    )
+    # The empty dashboard has a dedicated CTA; populated dashboards use
+    # a separate 'Create habit' button. Avoid assuming a fresh app state.
+    create = [
+        n for n in initial_nodes
+        if any(label in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).lower()
+               for label in ("create your first habit", "create habit"))
+    ]
+    if not create:
+        raise RuntimeError("No create-habit control on launch; inspect progress-launch-hierarchy.txt")
+    tap(create[0])
     time.sleep(2)
-    # Name field receives focus on entering the form.
+    (OUT / "progress-form-hierarchy.txt").write_text(
+        "\n".join(str(n.attrib) for n in nodes())
+    )
+    # Focus the editable habit-name field rather than assuming initial focus.
+    fields = [n for n in nodes() if n.attrib.get("class") == "android.widget.EditText"]
+    if not fields:
+        raise RuntimeError("Habit form has no accessible name field")
+    tap(fields[0])
     adb("shell", "input", "text", "Meditation")
     tap(find("Create habit"))
     time.sleep(4)
