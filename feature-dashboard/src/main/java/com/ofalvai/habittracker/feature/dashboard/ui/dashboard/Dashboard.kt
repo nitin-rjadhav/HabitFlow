@@ -178,7 +178,7 @@ private fun LoadedDashboard(
         DashboardAppBar(onConfigClick, onSettingsClick, onArchiveClick, onExportClick)
 
         if (onboardingState != null) {
-            Onboarding(onboardingState)
+            Onboarding(onboardingState, compact = habits.isNotEmpty())
         }
 
         if (habits.isNotEmpty()) {
