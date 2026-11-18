@@ -91,12 +91,12 @@ else
 fi
 timeout --signal=TERM --kill-after=5s 15s adb logcat -d -t 1500 > emulator-evidence/logcat.txt 2>/dev/null || true
 echo "Launch smoke check passed" | tee emulator-evidence/launch-result.txt
-echo "Starting bounded database instrumentation tests (6 minute limit)"
-timeout --signal=TERM --kill-after=15s 6m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
-# Dedicated Android accessibility API test. This invokes ACTION_CLICK via
-# UiAutomation and must pass independently of the pointer-based smoke checks.
+# Run the new accessibility API test first: the legacy database suite can
+# stall on this emulator, and must not prevent collecting ACTION_CLICK evidence.
 echo "Running accessibility ACTION_CLICK instrumentation test"
 timeout --signal=TERM --kill-after=30s 8m ./gradlew --no-daemon :feature-dashboard:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.ofalvai.habittracker.feature.dashboard.AccessibilityActionTest"
+echo "Starting bounded database instrumentation tests (6 minute limit)"
+timeout --signal=TERM --kill-after=15s 6m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
 if [[ "${RUN_COMPOSE_UI:-false}" == "true" ]]; then
   echo "Running optional Compose dashboard instrumentation tests"
   if [[ -n "${COMPOSE_TEST_METHOD:-}" ]]; then
