@@ -15,8 +15,19 @@ def adb(*args, timeout=30):
     return subprocess.run(["adb", *args], check=True, capture_output=True, timeout=timeout).stdout
 
 def hierarchy():
-    adb("shell", "uiautomator", "dump", "/sdcard/window.xml", timeout=40)
-    return ET.fromstring(adb("exec-out", "cat", "/sdcard/window.xml"))
+    last_error = None
+    for attempt in range(5):
+        try:
+            adb("shell", "uiautomator", "dump", "/sdcard/window.xml", timeout=40)
+            xml = adb("exec-out", "cat", "/sdcard/window.xml")
+            root = ET.fromstring(xml)
+            if root.tag != "hierarchy":
+                raise ValueError("Unexpected hierarchy root")
+            return root
+        except (ET.ParseError, ValueError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            last_error = exc
+            time.sleep(2)
+    raise RuntimeError("UI hierarchy unavailable after 5 attempts: " + str(last_error))
 
 def nodes():
     return list(hierarchy().iter("node"))
@@ -122,7 +133,7 @@ try:
     time.sleep(3)
     screenshot("progress-relaunch.png")
 except Exception as exc:
-    report.append("INCOMPLETE: " + str(exc))
+    report.append("FAIL: " + str(exc))
     try:
         screenshot("progress-diagnostic.png")
         (OUT / "progress-hierarchy.xml").write_bytes(adb("exec-out", "cat", "/sdcard/window.xml"))
@@ -131,3 +142,5 @@ except Exception as exc:
 finally:
     (OUT / "progress-check.txt").write_text("\n".join(report) + "\n")
     print("\n".join(report))
+    if any(line.startswith("FAIL:") for line in report) or sum(line.startswith("PASS:") for line in report) != 3:
+        raise SystemExit(1)
