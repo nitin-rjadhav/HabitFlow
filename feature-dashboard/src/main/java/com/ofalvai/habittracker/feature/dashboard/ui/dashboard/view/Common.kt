@@ -40,6 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -171,7 +173,16 @@ fun Modifier.satisfyingToggleable(
         val interactionSource = remember(toggled) { MutableInteractionSource() }
         var isSinglePress by remember { mutableStateOf(false) }
 
+        // Accessibility services and keyboard activation cannot perform a pointer long-press.
+        // Expose an explicit semantics action without changing touch interaction behavior.
         this
+            .semantics {
+                onClick {
+                    vibrator.vibrateCompat(VIBRATE_PATTERN_TOGGLE)
+                    onToggle(!toggled)
+                    true
+                }
+            }
             .pointerInput(key1 = toggled) {
                 detectTapGestures(
                     onPress = {
