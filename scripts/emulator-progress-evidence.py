@@ -117,7 +117,7 @@ try:
     (OUT / "accessibility-actions-before.txt").write_text(
         "\\n".join(str(n.attrib) for n in action_nodes) + "\\n"
     )
-    if len(action_nodes) != 7:
+    if len(action_nodes) != 5:
         raise RuntimeError(f"Expected five clickable day actions, found {len(action_nodes)}")
     report.append("PASS: five clickable habit actions exposed")
     # Compose pointerInput actions may not expose an Android accessibility
@@ -190,6 +190,7 @@ try:
     time.sleep(5)
     assert_count("0 of 1 completed")
     screenshot("progress-undo-relaunch.png")
+    report.append("PASS: completion and undo persisted across relaunch")
 except Exception as exc:
     report.append("FAIL: " + str(exc))
     try:
