@@ -117,7 +117,7 @@ try:
     (OUT / "accessibility-actions-before.txt").write_text(
         "\\n".join(str(n.attrib) for n in action_nodes) + "\\n"
     )
-    if len(action_nodes) != 5:
+    if len(action_nodes) != 7:
         raise RuntimeError(f"Expected five clickable day actions, found {len(action_nodes)}")
     report.append("PASS: five clickable habit actions exposed")
     # Compose pointerInput actions may not expose an Android accessibility
@@ -164,6 +164,32 @@ try:
     # Allow the resumed activity to draw before capturing visual evidence.
     time.sleep(3)
     screenshot("progress-relaunch.png")
+    # Verify undo and persistence independently of the original completion.
+    # Reuse the selected day column and derive its current vertical center
+    # from the relaunched hierarchy instead of stale absolute coordinates.
+    relaunched_actions = [n for n in nodes()
+                          if n.attrib.get("clickable") == "true"
+                          and horizontal_bounds(n) in action_columns]
+    target_column = min(action_columns, key=lambda col: abs((col[0] + col[1]) // 2 - x))
+    candidates = [n for n in relaunched_actions
+                  if horizontal_bounds(n) == target_column]
+    if not candidates:
+        raise RuntimeError("Cannot locate completed day action after relaunch")
+    # Use the candidate nearest the card label; duplicate semantics can
+    # expose more than one node at the same horizontal coordinate.
+    relaunched_label = find("Meditation")
+    _, label_y = center(relaunched_label)
+    target = min(candidates, key=lambda n: abs(center(n)[1] - (label_y + 165)))
+    ux, uy = center(target)
+    adb("shell", "input", "swipe", str(ux), str(uy), str(ux), str(uy), "1100")
+    time.sleep(3)
+    assert_count("0 of 1 completed")
+    screenshot("progress-undone.png")
+    adb("shell", "am", "force-stop", PKG)
+    adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
+    time.sleep(5)
+    assert_count("0 of 1 completed")
+    screenshot("progress-undo-relaunch.png")
 except Exception as exc:
     report.append("FAIL: " + str(exc))
     try:
