@@ -137,13 +137,18 @@ try:
     assert_count("1 of 1 completed")
     screenshot("progress-one-of-one.png")
     completed_nodes = nodes()
-    # A completed day changes its accessible state description, so it must
-    # not be filtered by the original "No date" text. Match the five
-    # previously observed action-circle bounds and require clickability.
-    action_bounds = {n.attrib.get("bounds") for n in action_nodes}
+    # Progress completion can shift the card vertically, and the completed
+    # day replaces "No date" with a timestamp. Compare horizontal bounds,
+    # which identify the same five day columns without relying on labels.
+    def horizontal_bounds(node):
+        bounds = node.attrib.get("bounds", "")
+        match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", bounds)
+        return (int(match.group(1)), int(match.group(3))) if match else None
+
+    action_columns = {horizontal_bounds(n) for n in action_nodes}
     completed_actions = [n for n in completed_nodes
                          if n.attrib.get("clickable") == "true"
-                         and n.attrib.get("bounds") in action_bounds]
+                         and horizontal_bounds(n) in action_columns]
     (OUT / "accessibility-actions-after.txt").write_text(
         "\\n".join(str(n.attrib) for n in completed_actions) + "\\n"
     )
