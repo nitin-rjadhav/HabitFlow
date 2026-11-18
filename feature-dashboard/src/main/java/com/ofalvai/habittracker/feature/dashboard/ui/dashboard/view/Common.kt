@@ -173,7 +173,7 @@ fun Modifier.satisfyingToggleable(
         val interactionSource = remember(toggled) { MutableInteractionSource() }
         var isSinglePress by remember { mutableStateOf(false) }
         val accessibilityActionLabel = stringResource(
-            if (toggled) R.string.dashboard_toggle_label_toggled
+            if (toggled) R.string.dashboard_toggle_action_undo
             else R.string.dashboard_toggle_label_untoggled
         )
 
