@@ -99,8 +99,8 @@ try:
     # Five-day habit card: action circles are right aligned, below title/history.
     # Record the chosen coordinates for review; never claim success without count.
     bounds = list(map(int, re.findall(r"\d+", label.attrib["bounds"])))
-    screen_width = int(adb("shell", "wm", "size").decode().strip().split("x")[-1])
-    x, y = screen_width - 55, ly + 95
+    screen_width = int(adb("shell", "wm", "size").decode().strip().split("x")[0].split()[-1])
+    x, y = screen_width - 150, ly + 165
     (OUT / "progress-toggle-target.txt").write_text(
         f"label_bounds={bounds}; screen_width={screen_width}; long_press=({x},{y})\n"
     )
