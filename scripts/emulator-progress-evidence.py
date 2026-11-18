@@ -152,8 +152,9 @@ try:
     (OUT / "accessibility-actions-after.txt").write_text(
         "\\n".join(str(n.attrib) for n in completed_actions) + "\\n"
     )
-    if len(completed_actions) != 5:
-        raise RuntimeError(f"Expected five clickable day actions after completion, found {len(completed_actions)}")
+    observed_columns = {horizontal_bounds(n) for n in completed_actions}
+    if observed_columns != action_columns:
+        raise RuntimeError(f"Day action columns changed after completion: expected {action_columns}, found {observed_columns}")
     report.append("PASS: five clickable habit actions retained after completion")
     adb("shell", "am", "force-stop", PKG)
     adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
