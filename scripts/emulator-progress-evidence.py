@@ -142,7 +142,7 @@ try:
     # which identify the same five day columns without relying on labels.
     def horizontal_bounds(node):
         bounds = node.attrib.get("bounds", "")
-        match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", bounds)
+        match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
         return (int(match.group(1)), int(match.group(3))) if match else None
 
     action_columns = {horizontal_bounds(n) for n in action_nodes}
@@ -201,5 +201,5 @@ except Exception as exc:
 finally:
     (OUT / "progress-check.txt").write_text("\n".join(report) + "\n")
     print("\n".join(report))
-    if any(line.startswith("FAIL:") for line in report) or sum(line.startswith("PASS:") for line in report) != 5:
+    if any(line.startswith("FAIL:") for line in report) or sum(line.startswith("PASS:") for line in report) != 8:
         raise SystemExit(1)
