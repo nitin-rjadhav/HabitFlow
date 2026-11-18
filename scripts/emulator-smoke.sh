@@ -25,7 +25,7 @@ adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 sleep 8
 adb shell pidof "$PACKAGE" | tee emulator-evidence/app-pid.txt
 # Collect real populated-dashboard evidence; diagnostic failures are recorded separately.
-python3 scripts/emulator-progress-evidence.py || echo "::warning::Progress evidence script encountered an error"
+timeout --signal=TERM --kill-after=10s 4m python3 -u scripts/emulator-progress-evidence.py || echo "::warning::Progress evidence script timed out or encountered an error"
 # Restore the app to the foreground for the existing smoke screenshots.
 adb shell am force-stop "$PACKAGE" || true
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
@@ -91,7 +91,8 @@ else
 fi
 timeout --signal=TERM --kill-after=5s 15s adb logcat -d -t 1500 > emulator-evidence/logcat.txt 2>/dev/null || true
 echo "Launch smoke check passed" | tee emulator-evidence/launch-result.txt
-timeout --signal=TERM --kill-after=30s 10m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
+echo "Starting bounded database instrumentation tests (6 minute limit)"
+timeout --signal=TERM --kill-after=15s 6m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
 if [[ "${RUN_COMPOSE_UI:-false}" == "true" ]]; then
   echo "Running optional Compose dashboard instrumentation tests"
   if [[ -n "${COMPOSE_TEST_METHOD:-}" ]]; then
