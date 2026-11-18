@@ -56,9 +56,14 @@ try:
     adb("shell", "am", "force-stop", PKG)
     adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
     time.sleep(5)
+    # Wait for the dashboard accessibility tree before capturing the launch frame.
+    # A screenshot taken immediately after activity launch can be blank.
+    initial_nodes = nodes()
+    if not any("create" in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).lower() for n in initial_nodes):
+        raise RuntimeError("Dashboard not ready for launch screenshot")
+    time.sleep(2)
     screenshot("progress-empty.png")
     # Record the actual launch screen even when onboarding or restored state differs.
-    initial_nodes = nodes()
     (OUT / "progress-launch-hierarchy.txt").write_text(
         "\n".join(str(n.attrib) for n in initial_nodes)
     )
