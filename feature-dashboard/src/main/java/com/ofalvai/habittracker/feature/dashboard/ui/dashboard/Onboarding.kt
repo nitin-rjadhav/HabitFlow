@@ -46,14 +46,14 @@ import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import kotlin.math.roundToInt
 
 @Composable
-fun Onboarding(state: OnboardingState) {
+fun Onboarding(state: OnboardingState, compact: Boolean = false) {
     Box(
         modifier = Modifier
             .animateContentSize(animationSpec = tween(500))
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = if (compact) 6.dp else 16.dp)
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
-            .padding(16.dp)
+            .padding(if (compact) 12.dp else 16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             val progress = state.step.index / state.totalSteps.toFloat()
@@ -61,7 +61,7 @@ fun Onboarding(state: OnboardingState) {
                 targetValue = progress,
                 animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
             )
-            Box(Modifier.size(48.dp)) {
+            Box(Modifier.size(if (compact) 36.dp else 48.dp)) {
                 CircularProgressIndicator(
                     progress = 1f,
                     modifier = Modifier.fillMaxSize(),
@@ -79,16 +79,19 @@ fun Onboarding(state: OnboardingState) {
                 )
             }
 
-            Column(Modifier.padding(start = 24.dp)) {
+            Column(Modifier.padding(start = if (compact) 12.dp else 24.dp)) {
                 Text(
                     text = stringResource(state.step.title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
-                Text(
-                    text = stringResource(state.step.subtitle),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                // Keep the long-press instruction discoverable until the first action is completed.
+                if (!compact || state.step.index == 1) {
+                    Text(
+                        text = stringResource(state.step.subtitle),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }

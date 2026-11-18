@@ -56,9 +56,14 @@ try:
     adb("shell", "am", "force-stop", PKG)
     adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
     time.sleep(5)
+    # Wait for the dashboard accessibility tree before capturing the launch frame.
+    # A screenshot taken immediately after activity launch can be blank.
+    initial_nodes = nodes()
+    if not any("create" in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).lower() for n in initial_nodes):
+        raise RuntimeError("Dashboard not ready for launch screenshot")
+    time.sleep(2)
     screenshot("progress-empty.png")
     # Record the actual launch screen even when onboarding or restored state differs.
-    initial_nodes = nodes()
     (OUT / "progress-launch-hierarchy.txt").write_text(
         "\n".join(str(n.attrib) for n in initial_nodes)
     )
@@ -112,6 +117,9 @@ try:
     adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
     time.sleep(4)
     assert_count("1 of 1 completed")
+    # UIAutomator can observe Compose semantics before the first rendered frame.
+    # Allow the resumed activity to draw before capturing visual evidence.
+    time.sleep(3)
     screenshot("progress-relaunch.png")
 except Exception as exc:
     report.append("INCOMPLETE: " + str(exc))
