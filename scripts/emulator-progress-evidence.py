@@ -137,9 +137,13 @@ try:
     assert_count("1 of 1 completed")
     screenshot("progress-one-of-one.png")
     completed_nodes = nodes()
+    # A completed day changes its accessible state description, so it must
+    # not be filtered by the original "No date" text. Match the five
+    # previously observed action-circle bounds and require clickability.
+    action_bounds = {n.attrib.get("bounds") for n in action_nodes}
     completed_actions = [n for n in completed_nodes
                          if n.attrib.get("clickable") == "true"
-                         and n.attrib.get("text") == "No date"]
+                         and n.attrib.get("bounds") in action_bounds]
     (OUT / "accessibility-actions-after.txt").write_text(
         "\\n".join(str(n.attrib) for n in completed_actions) + "\\n"
     )
