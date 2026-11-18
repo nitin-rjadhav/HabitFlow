@@ -46,7 +46,7 @@ class AccessibilityActionTest {
     private fun clickThroughAccessibility() {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         var clicked = false
-        repeat(20) {
+        for (attempt in 0 until 20) {
             val root = automation.rootInActiveWindow
             if (root != null) {
                 try {
@@ -62,7 +62,7 @@ class AccessibilityActionTest {
                     root.recycle()
                 }
             }
-            if (clicked) return@repeat
+            if (clicked) break
             Thread.sleep(250)
         }
         assertTrue("Android accessibility ACTION_CLICK was not accepted", clicked)
