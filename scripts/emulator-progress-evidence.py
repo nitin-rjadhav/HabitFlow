@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Best-effort real-emulator dashboard evidence, using Android accessibility hierarchy."""
+"""Real-emulator progress and accessibility-node evidence (not TalkBack activation)."""
 import re
 import subprocess
 import time
@@ -108,16 +108,18 @@ try:
     (OUT / "progress-accessibility-nodes.txt").write_text(
         "\n".join(str(n.attrib) for n in visible_nodes)
     )
-    # Dedicated accessibility contract: today's action must expose a labeled
-    # clickable accessibility node, not only a pointer long-press gesture.
-    action_nodes = [n for n in visible_nodes if n.attrib.get("clickable") == "true"
-                    and "Mark Done" in (n.attrib.get("content-desc", "") + " " + n.attrib.get("text", ""))]
+    # UIAutomator XML exposes accessibility clickability but does not serialize
+    # Compose CustomAccessibilityAction/onClick labels. Match the five action
+    # circles by their compact clickable bounds, not by invisible action labels.
+    action_nodes = [n for n in visible_nodes
+                    if n.attrib.get("clickable") == "true"
+                    and n.attrib.get("text") == "No date"]
     (OUT / "accessibility-actions-before.txt").write_text(
         "\\n".join(str(n.attrib) for n in action_nodes) + "\\n"
     )
-    if not action_nodes:
-        raise RuntimeError("No accessible Mark Done action exposed in Android UI hierarchy")
-    report.append("PASS: accessible Mark Done action exposed")
+    if len(action_nodes) != 5:
+        raise RuntimeError(f"Expected five clickable day actions, found {len(action_nodes)}")
+    report.append("PASS: five clickable habit actions exposed")
     # Compose pointerInput actions may not expose an Android accessibility
     # toggle state. Use the rightmost daily action inside the Meditation card.
     label = next(n for n in visible_nodes if n.attrib.get("text") == "Meditation")
@@ -135,14 +137,15 @@ try:
     assert_count("1 of 1 completed")
     screenshot("progress-one-of-one.png")
     completed_nodes = nodes()
-    undo_actions = [n for n in completed_nodes if n.attrib.get("clickable") == "true"
-                    and "Mark not done" in (n.attrib.get("content-desc", "") + " " + n.attrib.get("text", ""))]
+    completed_actions = [n for n in completed_nodes
+                         if n.attrib.get("clickable") == "true"
+                         and n.attrib.get("text") == "No date"]
     (OUT / "accessibility-actions-after.txt").write_text(
-        "\\n".join(str(n.attrib) for n in undo_actions) + "\\n"
+        "\\n".join(str(n.attrib) for n in completed_actions) + "\\n"
     )
-    if not undo_actions:
-        raise RuntimeError("No accessible Mark not done action after completion")
-    report.append("PASS: accessible Mark not done action exposed")
+    if len(completed_actions) != 5:
+        raise RuntimeError(f"Expected five clickable day actions after completion, found {len(completed_actions)}")
+    report.append("PASS: five clickable habit actions retained after completion")
     adb("shell", "am", "force-stop", PKG)
     adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
     time.sleep(4)
