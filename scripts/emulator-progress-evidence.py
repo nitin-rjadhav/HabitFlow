@@ -108,6 +108,16 @@ try:
     (OUT / "progress-accessibility-nodes.txt").write_text(
         "\n".join(str(n.attrib) for n in visible_nodes)
     )
+    # Dedicated accessibility contract: today's action must expose a labeled
+    # clickable accessibility node, not only a pointer long-press gesture.
+    action_nodes = [n for n in visible_nodes if n.attrib.get("clickable") == "true"
+                    and "Mark Done" in (n.attrib.get("content-desc", "") + " " + n.attrib.get("text", ""))]
+    (OUT / "accessibility-actions-before.txt").write_text(
+        "\\n".join(str(n.attrib) for n in action_nodes) + "\\n"
+    )
+    if not action_nodes:
+        raise RuntimeError("No accessible Mark Done action exposed in Android UI hierarchy")
+    report.append("PASS: accessible Mark Done action exposed")
     # Compose pointerInput actions may not expose an Android accessibility
     # toggle state. Use the rightmost daily action inside the Meditation card.
     label = next(n for n in visible_nodes if n.attrib.get("text") == "Meditation")
@@ -124,6 +134,15 @@ try:
     time.sleep(3)
     assert_count("1 of 1 completed")
     screenshot("progress-one-of-one.png")
+    completed_nodes = nodes()
+    undo_actions = [n for n in completed_nodes if n.attrib.get("clickable") == "true"
+                    and "Mark not done" in (n.attrib.get("content-desc", "") + " " + n.attrib.get("text", ""))]
+    (OUT / "accessibility-actions-after.txt").write_text(
+        "\\n".join(str(n.attrib) for n in undo_actions) + "\\n"
+    )
+    if not undo_actions:
+        raise RuntimeError("No accessible Mark not done action after completion")
+    report.append("PASS: accessible Mark not done action exposed")
     adb("shell", "am", "force-stop", PKG)
     adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
     time.sleep(4)
@@ -142,5 +161,5 @@ except Exception as exc:
 finally:
     (OUT / "progress-check.txt").write_text("\n".join(report) + "\n")
     print("\n".join(report))
-    if any(line.startswith("FAIL:") for line in report) or sum(line.startswith("PASS:") for line in report) != 3:
+    if any(line.startswith("FAIL:") for line in report) or sum(line.startswith("PASS:") for line in report) != 5:
         raise SystemExit(1)
