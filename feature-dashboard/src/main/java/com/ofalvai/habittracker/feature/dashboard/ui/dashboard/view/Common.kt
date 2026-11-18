@@ -172,12 +172,16 @@ fun Modifier.satisfyingToggleable(
         // would leave the InteractionSource in the pressed state
         val interactionSource = remember(toggled) { MutableInteractionSource() }
         var isSinglePress by remember { mutableStateOf(false) }
+        val accessibilityActionLabel = stringResource(
+            if (toggled) R.string.dashboard_toggle_label_toggled
+            else R.string.dashboard_toggle_label_untoggled
+        )
 
         // Accessibility services and keyboard activation cannot perform a pointer long-press.
         // Expose an explicit semantics action without changing touch interaction behavior.
         this
             .semantics {
-                onClick {
+                onClick(label = accessibilityActionLabel) {
                     vibrator.vibrateCompat(VIBRATE_PATTERN_TOGGLE)
                     onToggle(!toggled)
                     true
