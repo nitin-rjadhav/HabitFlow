@@ -24,8 +24,8 @@ echo "Installed package: $PACKAGE"
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 sleep 8
 adb shell pidof "$PACKAGE" | tee emulator-evidence/app-pid.txt
-# Collect real populated-dashboard evidence; diagnostic failures are recorded separately.
-timeout --signal=TERM --kill-after=10s 4m python3 -u scripts/emulator-progress-evidence.py || echo "::warning::Progress evidence script timed out or encountered an error"
+# Require real populated-dashboard evidence; incomplete progress checks must fail CI.
+timeout --signal=TERM --kill-after=10s 4m python3 -u scripts/emulator-progress-evidence.py
 # Restore the app to the foreground for the existing smoke screenshots.
 adb shell am force-stop "$PACKAGE" || true
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
