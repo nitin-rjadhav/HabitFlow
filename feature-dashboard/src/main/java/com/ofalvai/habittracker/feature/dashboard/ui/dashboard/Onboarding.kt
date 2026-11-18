@@ -85,7 +85,8 @@ fun Onboarding(state: OnboardingState, compact: Boolean = false) {
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
-                if (!compact) {
+                // Keep the long-press instruction discoverable until the first action is completed.
+                if (!compact || state.step.index == 1) {
                     Text(
                         text = stringResource(state.step.subtitle),
                         style = MaterialTheme.typography.bodyMedium
