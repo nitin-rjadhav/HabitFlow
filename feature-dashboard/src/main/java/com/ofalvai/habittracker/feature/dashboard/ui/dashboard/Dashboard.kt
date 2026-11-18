@@ -224,7 +224,8 @@ internal fun TodayProgress(summary: TodayProgressState) {
       Column(modifier = Modifier.padding(16.dp)) {
         androidx.compose.foundation.layout.Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = stringResource(R.string.dashboard_today_progress),
