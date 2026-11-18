@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -35,6 +36,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -47,9 +49,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import com.ofalvai.habittracker.core.common.OnboardingState
 import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.model.Habit
@@ -61,6 +66,7 @@ import com.ofalvai.habittracker.core.ui.component.ContentWithPlaceholder
 import com.ofalvai.habittracker.core.ui.component.ErrorView
 import com.ofalvai.habittracker.core.ui.state.Result
 import com.ofalvai.habittracker.core.ui.state.asEffect
+import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.core.ui.theme.AppTextStyle
 import com.ofalvai.habittracker.core.ui.theme.CoreIcons
 import com.ofalvai.habittracker.feature.dashboard.R
@@ -173,6 +179,10 @@ private fun LoadedDashboard(
             Onboarding(onboardingState)
         }
 
+        if (habits.isNotEmpty()) {
+            TodayProgress(todayProgress(habits))
+        }
+
         ContentWithPlaceholder(
             showPlaceholder = habits.isEmpty(),
             placeholder = { DashboardPlaceholder(onAddHabitClick) }
@@ -197,6 +207,41 @@ private fun LoadedDashboard(
                 }
             }
         }
+    }
+}
+
+/** Summary of today's completion state, based on the final (today) action for each habit. */
+@Composable
+internal fun TodayProgress(summary: TodayProgressState) {
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = stringResource(R.string.dashboard_today_progress),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.dashboard_today_progress_count, summary.completed, summary.total),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        val progressLabel = stringResource(R.string.dashboard_today_progress_count, summary.completed, summary.total)
+        LinearProgressIndicator(
+            progress = summary.fraction,
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = progressLabel },
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.dashboard_today_progress_percent, summary.percent),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -269,5 +314,14 @@ private fun DashboardPlaceholder(onAddHabitClick: () -> Unit) {
             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
             Text(stringResource(R.string.dashboard_create_habit_first))
         }
+    }
+}
+
+/** Design-time preview with sample data; not an emulator screenshot. */
+@Preview(showBackground = true)
+@Composable
+fun PreviewTodayProgress() {
+    PreviewTheme {
+        TodayProgress(TodayProgressState(completed = 3, total = 5))
     }
 }
