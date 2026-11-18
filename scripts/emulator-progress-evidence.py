@@ -68,16 +68,23 @@ try:
     screenshot("progress-zero-of-one.png")
     # Android exposes each daily action with a relative date and toggle state.
     # Find today's circle via accessible text; long press is required by this app.
-    action_nodes = [n for n in nodes() if n.attrib.get("state-desc") and n.attrib.get("bounds")]
-    (OUT / "progress-actions-before.txt").write_text("\n".join(str(n.attrib) for n in action_nodes))
-    if not action_nodes:
-        raise RuntimeError("No accessible action toggles found")
-    # In the five-day layout the final/rightmost action is today's action.
-    # Prefer the action with the rightmost center instead of a generic 'Today' label.
-    target = max(action_nodes, key=lambda n: center(n)[0])
-    x, y = center(target)
+    visible_nodes = nodes()
+    (OUT / "progress-accessibility-nodes.txt").write_text(
+        "\n".join(str(n.attrib) for n in visible_nodes)
+    )
+    # Compose pointerInput actions may not expose an Android accessibility
+    # toggle state. Use the rightmost daily action inside the Meditation card.
+    label = next(n for n in visible_nodes if n.attrib.get("text") == "Meditation")
+    lx, ly = center(label)
+    # Five-day habit card: action circles are right aligned, below title/history.
+    # Record the chosen coordinates for review; never claim success without count.
+    bounds = list(map(int, re.findall(r"\d+", label.attrib["bounds"])))
+    screen_width = int(adb("shell", "wm", "size").decode().strip().split("x")[-1])
+    x, y = screen_width - 55, ly + 95
+    (OUT / "progress-toggle-target.txt").write_text(
+        f"label_bounds={bounds}; screen_width={screen_width}; long_press=({x},{y})\n"
+    )
     adb("shell", "input", "swipe", str(x), str(y), str(x), str(y), "1100")
-    (OUT / "progress-actions-after.txt").write_text("\n".join(str(n.attrib) for n in nodes() if n.attrib.get("state-desc")))
     time.sleep(3)
     assert_count("1 of 1 completed")
     screenshot("progress-one-of-one.png")
