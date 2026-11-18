@@ -112,6 +112,9 @@ try:
     adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
     time.sleep(4)
     assert_count("1 of 1 completed")
+    # UIAutomator can observe Compose semantics before the first rendered frame.
+    # Allow the resumed activity to draw before capturing visual evidence.
+    time.sleep(3)
     screenshot("progress-relaunch.png")
 except Exception as exc:
     report.append("INCOMPLETE: " + str(exc))
