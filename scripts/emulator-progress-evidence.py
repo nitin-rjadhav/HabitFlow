@@ -75,13 +75,16 @@ try:
     for attempt in range(12):
         initial_nodes = nodes()
         (OUT / "progress-launch-hierarchy.txt").write_text(
-            "\\n".join(str(n.attrib) for n in initial_nodes)
+            "\n".join(str(n.attrib) for n in initial_nodes)
         )
         if any("create" in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).lower()
                for n in initial_nodes):
             break
         time.sleep(3)
     else:
+        print("Dashboard readiness diagnostics (last UI hierarchy):", flush=True)
+        for node in initial_nodes[:60]:
+            print(node.attrib, flush=True)
         raise RuntimeError("Dashboard not ready after 36 seconds; inspect progress-launch-hierarchy.txt")
     time.sleep(2)
     screenshot("progress-empty.png")
