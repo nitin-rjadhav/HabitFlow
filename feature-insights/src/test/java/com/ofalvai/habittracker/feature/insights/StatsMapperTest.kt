@@ -369,7 +369,7 @@ class StatsMapperTest {
     }
 
     @Test
-    fun `Given habit with first action today When mapped to top habit item Then progress and count are 0`() {
+    fun `Given habit with first action today When mapped to top habit item Then progress is full`() {
         // Given
         val now = LocalDate.of(2021, 5, 23)
         val habitActionCount = HabitActionCount(
@@ -387,7 +387,7 @@ class StatsMapperTest {
             habitId = 1,
             name = "New habit",
             count = 1,
-            progress = 0f
+            progress = 1f
         )
         assertEquals(expected, topHabitItem)
     }
@@ -411,9 +411,39 @@ class StatsMapperTest {
             habitId = 1,
             name = "Old habit",
             count = 16,
-            progress = 0.1632653f
+            progress = 16f / 99f
         )
         assertEquals(expected, topHabitItem)
+    }
+
+    @Test
+    fun `Given repeated completions When mapped Then progress never exceeds one`() {
+        val now = LocalDate.of(2021, 5, 23)
+        val item = mapHabitActionCount(
+            HabitActionCount(
+                habit_id = 7,
+                name = "Imported habit",
+                first_day = now.minusDays(1),
+                count = 5
+            ),
+            now
+        )
+        assertEquals(1f, item.progress)
+    }
+
+    @Test
+    fun `Given a future first action date When mapped Then progress remains bounded`() {
+        val now = LocalDate.of(2021, 5, 23)
+        val item = mapHabitActionCount(
+            HabitActionCount(
+                habit_id = 8,
+                name = "Future dated habit",
+                first_day = now.plusDays(1),
+                count = 1
+            ),
+            now
+        )
+        assertEquals(0f, item.progress)
     }
 
     @Test

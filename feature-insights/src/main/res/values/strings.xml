@@ -35,4 +35,10 @@
     <string name="insights_topdays_description">Your most successful days. The list shows the day when each habit is performed most often and the number of completed habits on the day.</string>
     <string name="insights_topdays_error">Failed to load top days</string>
     <string name="insights_topdays_empty_label">A bit more data is needed to display your top days. Add more habits and perform them a few times.</string>
+    <string name="insights_month_completions">Completions</string>
+    <string name="insights_month_active_days">Active days</string>
+    <string name="insights_month_best_day">Best day</string>
+    <string name="insights_month_comparison">%1$s completions vs previous month (first %2$d days)</string>
+    <string name="insights_activity_streaks">Longest active-day streak: %1$d · Ending streak: %2$d</string>
+    <string name="insights_weekly_activity">Weekly completions (Mon–Sun): %1$s</string>
 </resources>

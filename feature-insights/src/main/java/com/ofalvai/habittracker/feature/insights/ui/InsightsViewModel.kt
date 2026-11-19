@@ -28,11 +28,14 @@ import com.ofalvai.habittracker.feature.insights.mapper.mapHabitTopDay
 import com.ofalvai.habittracker.feature.insights.mapper.mapSumActionCountByDay
 import com.ofalvai.habittracker.feature.insights.mapper.toModel
 import com.ofalvai.habittracker.feature.insights.model.HeatmapMonth
+import com.ofalvai.habittracker.feature.insights.model.MonthlyComparison
+import com.ofalvai.habittracker.feature.insights.model.compareMonthlyCompletions
 import com.ofalvai.habittracker.feature.insights.model.TopDayItem
 import com.ofalvai.habittracker.feature.insights.model.TopHabitItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +57,7 @@ class InsightsViewModel @Inject constructor(
 ): ViewModel() {
 
     val heatmapState = MutableStateFlow<Result<HeatmapMonth>>(Result.Loading)
+    val monthlyComparison = MutableStateFlow<MonthlyComparison?>(null)
     val topHabits = MutableStateFlow<Result<ImmutableList<TopHabitItem>>>(Result.Loading)
     val habitTopDays = MutableStateFlow<Result<ImmutableList<TopDayItem>>>(Result.Loading)
     val heatmapCompletedHabitsAtDate = MutableStateFlow<ImmutableList<Habit>?>(null)
@@ -64,33 +68,51 @@ class InsightsViewModel @Inject constructor(
         replay = 1
     )
 
+    // Each calendar navigation supersedes earlier requests, even if the DAO
+    // returns their results out of order.
+    private var latestHeatmapRequest = 0L
+    private var latestDayRequest = 0L
+
     init {
         fetchStats()
         onboardingManager.insightsOpened()
     }
 
     fun fetchHeatmap(yearMonth: YearMonth) {
+        val request = ++latestHeatmapRequest
+        monthlyComparison.value = null
+        heatmapState.value = Result.Loading
         viewModelScope.launch {
-            reloadHeatmap(yearMonth)
+            reloadHeatmap(yearMonth, request)
         }
     }
 
     fun fetchCompletedHabitsAt(date: LocalDate) {
+        // Clear the previous day's popup immediately; older asynchronous
+        // lookups must not replace the details for a newer selection.
+        val request = ++latestDayRequest
+        heatmapCompletedHabitsAtDate.value = null
         viewModelScope.launch {
             try {
-                heatmapCompletedHabitsAtDate.value = habitDao.getCompletedHabitsAt(date)
+                val habits = habitDao.getCompletedHabitsAt(date)
                     .map { it.toModel() }
                     .toImmutableList()
-            } catch (e: Throwable) {
+                if (request == latestDayRequest) {
+                    heatmapCompletedHabitsAtDate.value = habits
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 telemetry.logNonFatal(e)
+                // Do not misrepresent a failed lookup as a day with zero habits.
             }
         }
     }
 
     private fun fetchStats() {
+        fetchHeatmap(YearMonth.now())
         viewModelScope.launch {
             val deferreds = listOf(
-                async { reloadHeatmap(yearMonth = YearMonth.now()) },
                 async { reloadTopHabits() },
                 async { reloadHabitTopDays() },
             )
@@ -98,23 +120,40 @@ class InsightsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun reloadHeatmap(yearMonth: YearMonth) {
+    private suspend fun reloadHeatmap(yearMonth: YearMonth, request: Long) {
         try {
             val startDate = yearMonth.atDay(1)
             val endDate = yearMonth.atEndOfMonth()
             val actionCountList = habitDao.getSumActionCountByDay(startDate, endDate)
             val habitCount = habitCount.first()
+            val month = mapSumActionCountByDay(actionCountList, yearMonth, habitCount)
 
-            heatmapState.value = Result.Success(
-                mapSumActionCountByDay(
-                    entityList = actionCountList,
-                    yearMonth,
-                    habitCount
+            // A comparison is supplementary: a failure fetching the previous
+            // month must not hide an otherwise valid current-month heatmap.
+            val comparison = try {
+                val previousMonth = yearMonth.minusMonths(1)
+                val previousCounts = habitDao.getSumActionCountByDay(
+                    previousMonth.atDay(1), previousMonth.atEndOfMonth()
                 )
-            )
-        } catch (e: Throwable) {
+                val previous = mapSumActionCountByDay(previousCounts, previousMonth, habitCount)
+                compareMonthlyCompletions(month, previous)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                telemetry.logNonFatal(e)
+                null
+            }
+            if (request == latestHeatmapRequest) {
+                monthlyComparison.value = comparison
+                heatmapState.value = Result.Success(month)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             telemetry.logNonFatal(e)
-            heatmapState.value = Result.Failure(e)
+            if (request == latestHeatmapRequest) {
+                heatmapState.value = Result.Failure(e)
+            }
         }
     }
 
