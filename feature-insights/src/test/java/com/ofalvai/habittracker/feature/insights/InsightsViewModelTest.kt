@@ -30,6 +30,8 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -187,6 +189,25 @@ class InsightsViewModelTest {
             ))
             assertEquals(expected, awaitItem())
         }
+    }
+
+    @Test
+    fun `Given previous day details When selecting another day Then old details are cleared immediately`() = runTest {
+        given(dao.getTotalHabitCount()).willReturn(flowOf(1))
+        given(dao.getSumActionCountByDay(any(), any())).willReturn(emptyList())
+        given(dao.getMostSuccessfulHabits(any())).willReturn(emptyList())
+        given(dao.getTopDayForHabits()).willReturn(emptyList())
+        given(dao.getCompletedHabitsAt(any())).willReturn(emptyList())
+
+        viewModel = createViewModel()
+        viewModel.fetchCompletedHabitsAt(LocalDate.now().minusDays(1))
+        runCurrent()
+        assertEquals(0, viewModel.heatmapCompletedHabitsAtDate.value?.size)
+
+        viewModel.fetchCompletedHabitsAt(LocalDate.now())
+        assertNull(viewModel.heatmapCompletedHabitsAtDate.value)
+        runCurrent()
+        assertEquals(0, viewModel.heatmapCompletedHabitsAtDate.value?.size)
     }
 
     private fun createViewModel() = InsightsViewModel(dao, telemetry, onboardingManager)
