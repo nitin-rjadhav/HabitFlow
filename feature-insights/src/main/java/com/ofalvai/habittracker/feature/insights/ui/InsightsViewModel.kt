@@ -104,9 +104,7 @@ class InsightsViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 telemetry.logNonFatal(e)
-                if (request == latestDayRequest) {
-                    heatmapCompletedHabitsAtDate.value = kotlinx.collections.immutable.persistentListOf()
-                }
+                // Do not misrepresent a failed lookup as a day with zero habits.
             }
         }
     }
