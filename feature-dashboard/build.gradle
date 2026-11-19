@@ -9,6 +9,10 @@ android {
     namespace 'com.ofalvai.habittracker.feature.dashboard'
 
     defaultConfig {
+        // Prevent Android 14+ from intercepting the instrumented test host with
+        // the legacy (target SDK 21) Review Permissions screen.
+        // The app module keeps its own production target SDK configuration.
+        targetSdk 28
         testInstrumentationRunner 'com.ofalvai.habittracker.core.testing.HiltTestRunner'
     }
 }
@@ -37,6 +41,7 @@ dependencies {
 
     androidTestImplementation project(':core-testing')
     androidTestImplementation libs.compose.ui.test
+    androidTestImplementation libs.androidx.activity.compose
     androidTestImplementation libs.hilt.testing
     androidTestImplementation libs.androidx.room.runtime
     kspAndroidTest libs.hilt.compiler

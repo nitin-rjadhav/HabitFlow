@@ -24,8 +24,8 @@ echo "Installed package: $PACKAGE"
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
 sleep 8
 adb shell pidof "$PACKAGE" | tee emulator-evidence/app-pid.txt
-# Collect real populated-dashboard evidence; diagnostic failures are recorded separately.
-timeout --signal=TERM --kill-after=10s 4m python3 -u scripts/emulator-progress-evidence.py || echo "::warning::Progress evidence script timed out or encountered an error"
+# Require real populated-dashboard evidence; incomplete progress checks must fail CI.
+timeout --signal=TERM --kill-after=10s 4m python3 -u scripts/emulator-progress-evidence.py
 # Restore the app to the foreground for the existing smoke screenshots.
 adb shell am force-stop "$PACKAGE" || true
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1
@@ -91,6 +91,52 @@ else
 fi
 timeout --signal=TERM --kill-after=5s 15s adb logcat -d -t 1500 > emulator-evidence/logcat.txt 2>/dev/null || true
 echo "Launch smoke check passed" | tee emulator-evidence/launch-result.txt
+# Run the new accessibility API test first: the legacy database suite can
+# stall on this emulator, and must not prevent collecting ACTION_CLICK evidence.
+echo "Running accessibility ACTION_CLICK instrumentation test"
+# Build the test APK without invoking Gradle's connected test orchestrator, which
+# has hung while reporting "15 Tests 0/1 completed" on this runner.
+timeout --signal=TERM --kill-after=30s 6m ./gradlew --no-daemon :feature-dashboard:assembleDebugAndroidTest
+TEST_APK="feature-dashboard/build/outputs/apk/androidTest/debug/feature-dashboard-debug-androidTest.apk"
+test -s "$TEST_APK"
+# The instrumentation activity must target SDK 23+; older targets trigger
+# Android's interactive Review Permissions UI and hang ActivityScenario.launch.
+adb install -r "$TEST_APK"
+TEST_PACKAGE="com.ofalvai.habittracker.feature.dashboard.test"
+adb shell dumpsys package "$TEST_PACKAGE" > emulator-evidence/test-package-installed.txt
+TEST_TARGET_SDK=$(grep -m1 -oE 'targetSdk=[0-9]+' emulator-evidence/test-package-installed.txt | cut -d= -f2)
+echo "Instrumented test target SDK: ${TEST_TARGET_SDK:-unknown}"
+if [[ -z "$TEST_TARGET_SDK" || "$TEST_TARGET_SDK" -lt 23 ]]; then
+  echo "::error::Instrumented test target SDK is below 23; Android may show blocking Review Permissions UI"
+  exit 1
+fi
+# Explicit instrumentation class filter guarantees only the ACTION_CLICK test
+# runs, rather than the entire dashboard instrumentation suite.
+# Capture instrumentation diagnostics *while the emulator is alive*. Previously
+# logcat was collected only after the emulator action shut down the device,
+# yielding an empty log and obscuring the three-minute instrumentation hang.
+adb shell pm list instrumentation > emulator-evidence/instrumentation-registered.txt
+adb shell dumpsys package com.ofalvai.habittracker.feature.dashboard.test \
+  > emulator-evidence/instrumentation-package.txt
+adb logcat -c || true
+adb logcat -v threadtime > emulator-evidence/instrumentation-logcat.txt 2>&1 &
+LOGCAT_PID=$!
+set +e
+timeout --signal=TERM --kill-after=15s 3m adb shell am instrument -w \
+  -e class com.ofalvai.habittracker.feature.dashboard.AccessibilityActionTest \
+  com.ofalvai.habittracker.feature.dashboard.test/com.ofalvai.habittracker.core.testing.HiltTestRunner \
+  | tee emulator-evidence/accessibility-instrumentation.txt
+INSTRUMENT_STATUS=${PIPESTATUS[0]}
+set -e
+kill "$LOGCAT_PID" 2>/dev/null || true
+wait "$LOGCAT_PID" 2>/dev/null || true
+if [[ "$INSTRUMENT_STATUS" -ne 0 ]]; then
+  echo "::error::Accessibility instrumentation failed or timed out (status $INSTRUMENT_STATUS); see instrumentation-logcat.txt"
+  exit "$INSTRUMENT_STATUS"
+fi
+# am instrument may exit 0 even when tests fail: require exactly one success.
+grep -Eq '^OK \(1 test\)' emulator-evidence/accessibility-instrumentation.txt
+
 echo "Starting bounded database instrumentation tests (6 minute limit)"
 timeout --signal=TERM --kill-after=15s 6m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
 if [[ "${RUN_COMPOSE_UI:-false}" == "true" ]]; then
