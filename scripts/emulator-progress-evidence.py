@@ -69,9 +69,20 @@ try:
     time.sleep(5)
     # Wait for the dashboard accessibility tree before capturing the launch frame.
     # A screenshot taken immediately after activity launch can be blank.
-    initial_nodes = nodes()
-    if not any("create" in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).lower() for n in initial_nodes):
-        raise RuntimeError("Dashboard not ready for launch screenshot")
+    initial_nodes = []
+    # Emulator cold starts can display a splash/loading frame after monkey returns.
+    # Poll the actual dashboard CTA rather than failing on a single early dump.
+    for attempt in range(12):
+        initial_nodes = nodes()
+        (OUT / "progress-launch-hierarchy.txt").write_text(
+            "\\n".join(str(n.attrib) for n in initial_nodes)
+        )
+        if any("create" in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).lower()
+               for n in initial_nodes):
+            break
+        time.sleep(3)
+    else:
+        raise RuntimeError("Dashboard not ready after 36 seconds; inspect progress-launch-hierarchy.txt")
     time.sleep(2)
     screenshot("progress-empty.png")
     # Record the actual launch screen even when onboarding or restored state differs.
