@@ -63,8 +63,11 @@ fun mapSumActionCountByDay(
 }
 
 fun mapHabitActionCount(entity: HabitActionCount, now: LocalDate): TopHabitItem {
-    val activeDays = ChronoUnit.DAYS.between(entity.first_day, now)
-    val progress = if (activeDays > 0) entity.count / activeDays.toFloat() else 0f
+    // Include the first day: a habit completed today is 1/1, not 0/0.
+    // Keep the bar within 0..1 even if imported history contains duplicates.
+    val elapsedDays = ChronoUnit.DAYS.between(entity.first_day, now)
+    val daysInPeriod = (elapsedDays + 1).coerceAtLeast(1)
+    val progress = (entity.count.toFloat() / daysInPeriod).coerceIn(0f, 1f)
 
     return TopHabitItem(
         habitId = entity.habit_id,
