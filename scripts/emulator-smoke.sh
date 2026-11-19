@@ -94,7 +94,21 @@ echo "Launch smoke check passed" | tee emulator-evidence/launch-result.txt
 # Run the new accessibility API test first: the legacy database suite can
 # stall on this emulator, and must not prevent collecting ACTION_CLICK evidence.
 echo "Running accessibility ACTION_CLICK instrumentation test"
-timeout --signal=TERM --kill-after=30s 8m ./gradlew --no-daemon :feature-dashboard:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.ofalvai.habittracker.feature.dashboard.AccessibilityActionTest"
+# Build the test APK without invoking Gradle's connected test orchestrator, which
+# has hung while reporting "15 Tests 0/1 completed" on this runner.
+timeout --signal=TERM --kill-after=30s 6m ./gradlew --no-daemon :feature-dashboard:assembleDebugAndroidTest
+TEST_APK="feature-dashboard/build/outputs/apk/androidTest/debug/feature-dashboard-debug-androidTest.apk"
+test -s "$TEST_APK"
+adb install -r "$TEST_APK"
+# Explicit instrumentation class filter guarantees only the ACTION_CLICK test
+# runs, rather than the entire dashboard instrumentation suite.
+timeout --signal=TERM --kill-after=15s 3m adb shell am instrument -w \\
+  -e class com.ofalvai.habittracker.feature.dashboard.AccessibilityActionTest \\
+  com.ofalvai.habittracker.feature.dashboard.test/com.ofalvai.habittracker.core.testing.HiltTestRunner \\
+  | tee emulator-evidence/accessibility-instrumentation.txt
+# am instrument may exit 0 even when tests fail: require exactly one success.
+grep -Eq '^OK \\(1 test\\)' emulator-evidence/accessibility-instrumentation.txt
+
 echo "Starting bounded database instrumentation tests (6 minute limit)"
 timeout --signal=TERM --kill-after=15s 6m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
 if [[ "${RUN_COMPOSE_UI:-false}" == "true" ]]; then
