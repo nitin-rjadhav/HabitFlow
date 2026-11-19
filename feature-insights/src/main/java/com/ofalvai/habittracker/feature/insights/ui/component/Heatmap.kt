@@ -50,6 +50,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
@@ -257,7 +258,7 @@ private fun HeatmapCalendar(
     onLoadHabitsAt: (LocalDate) -> Unit,
     onMonthSwipe: (YearMonth) -> Unit
 ) {
-    var showPopup by remember { mutableStateOf(false) }
+    var showPopup by remember(yearMonth.item) { mutableStateOf(false) }
     val onDayClick: (LocalDate) -> Unit = {
         onLoadHabitsAt(it)
         showPopup = true
@@ -291,13 +292,13 @@ private fun DayCell(
     Box(
         modifier = Modifier
             .semantics(mergeDescendants = true) {
-                text = AnnotatedString(DateTimeFormatter.ofPattern("LL dd").format(day.date))
+                text = AnnotatedString(DateTimeFormatter.ofPattern("LL dd yyyy").format(day.date))
                 stateDescription = completionDescription
             }
             .padding(4.dp)
             .then(todayModifier)
             .clip(CircleShape)
-            .clickable { onDayClick(day.date) }
+            .clickable(role = Role.Button) { onDayClick(day.date) }
             .aspectRatio(1f)
             .background(color, shape = CircleShape),
         contentAlignment = Alignment.Center
