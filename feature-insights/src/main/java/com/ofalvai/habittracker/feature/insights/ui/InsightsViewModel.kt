@@ -35,6 +35,7 @@ import com.ofalvai.habittracker.feature.insights.model.TopHabitItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,14 +68,21 @@ class InsightsViewModel @Inject constructor(
         replay = 1
     )
 
+    // Each calendar navigation supersedes earlier requests, even if the DAO
+    // returns their results out of order.
+    private var latestHeatmapRequest = 0L
+
     init {
         fetchStats()
         onboardingManager.insightsOpened()
     }
 
     fun fetchHeatmap(yearMonth: YearMonth) {
+        val request = ++latestHeatmapRequest
+        monthlyComparison.value = null
+        heatmapState.value = Result.Loading
         viewModelScope.launch {
-            reloadHeatmap(yearMonth)
+            reloadHeatmap(yearMonth, request)
         }
     }
 
@@ -91,9 +99,9 @@ class InsightsViewModel @Inject constructor(
     }
 
     private fun fetchStats() {
+        fetchHeatmap(YearMonth.now())
         viewModelScope.launch {
             val deferreds = listOf(
-                async { reloadHeatmap(yearMonth = YearMonth.now()) },
                 async { reloadTopHabits() },
                 async { reloadHabitTopDays() },
             )
@@ -101,10 +109,7 @@ class InsightsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun reloadHeatmap(yearMonth: YearMonth) {
-        // Invalidate any prior comparison before loading a different month.
-        monthlyComparison.value = null
-        heatmapState.value = Result.Loading
+    private suspend fun reloadHeatmap(yearMonth: YearMonth, request: Long) {
         try {
             val startDate = yearMonth.atDay(1)
             val endDate = yearMonth.atEndOfMonth()
@@ -114,20 +119,30 @@ class InsightsViewModel @Inject constructor(
 
             // A comparison is supplementary: a failure fetching the previous
             // month must not hide an otherwise valid current-month heatmap.
-            try {
+            val comparison = try {
                 val previousMonth = yearMonth.minusMonths(1)
                 val previousCounts = habitDao.getSumActionCountByDay(
                     previousMonth.atDay(1), previousMonth.atEndOfMonth()
                 )
                 val previous = mapSumActionCountByDay(previousCounts, previousMonth, habitCount)
-                monthlyComparison.value = compareMonthlyCompletions(month, previous)
+                compareMonthlyCompletions(month, previous)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 telemetry.logNonFatal(e)
+                null
             }
-            heatmapState.value = Result.Success(month)
+            if (request == latestHeatmapRequest) {
+                monthlyComparison.value = comparison
+                heatmapState.value = Result.Success(month)
+            }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             telemetry.logNonFatal(e)
-            heatmapState.value = Result.Failure(e)
+            if (request == latestHeatmapRequest) {
+                heatmapState.value = Result.Failure(e)
+            }
         }
     }
 
