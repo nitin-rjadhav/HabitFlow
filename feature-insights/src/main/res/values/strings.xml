@@ -38,4 +38,5 @@
     <string name="insights_month_completions">Completions</string>
     <string name="insights_month_active_days">Active days</string>
     <string name="insights_month_best_day">Best day</string>
+    <string name="insights_month_comparison">%1$s completions vs previous month (first %2$d days)</string>
 </resources>
