@@ -2,77 +2,83 @@ package com.ofalvai.habittracker.feature.dashboard
 
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
-import androidx.activity.ComponentActivity
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import org.junit.rules.TestWatcher
-import org.junit.runner.Description
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.fiveday.ActionCircle
+import java.util.concurrent.atomic.AtomicBoolean
 import org.junit.Assert.assertTrue
-import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Invokes Android's accessibility ACTION_CLICK via UiAutomation rather than
- * Compose performClick or an adb touch/long-press gesture.
+ * Exercises the Android accessibility API without a Compose test rule.
+ * The Compose rule has hung before entering the test body on CI emulators.
  */
 @RunWith(AndroidJUnit4::class)
 class AccessibilityActionTest {
     private val tag = "HabitFlowA11yTest"
-    @get:Rule(order = 0) val traceRule = object : TestWatcher() {
-        override fun starting(description: Description) {
-            Log.i(tag, "RULE: TestWatcher starting before Compose activity rule")
-        }
-    }
-
-    @get:Rule(order = 1) val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
     fun accessibilityClickCompletesAndUndoesHabit() {
-        Log.i(tag, "STAGE 1: test entered")
+        Log.i(tag, "STAGE 1: test body entered")
         val completed = mutableStateOf(false)
-        Log.i(tag, "STAGE 2: before setContent")
-        composeRule.setContent {
-            PreviewTheme {
-                ActionCircle(
-                    activeColor = Color.Blue,
-                    action = Action(id = 1, toggled = completed.value, timestamp = null),
-                    onToggle = { completed.value = it },
-                    isHighlighted = true,
-                    onSinglePress = {}
-                )
+        val stateObserved = AtomicBoolean(false)
+        Log.i(tag, "STAGE 2: launching activity")
+        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            Log.i(tag, "STAGE 3: activity launched")
+            scenario.onActivity { activity ->
+                activity.setContent {
+                    PreviewTheme {
+                        ActionCircle(
+                            activeColor = Color.Blue,
+                            action = Action(id = 1, toggled = completed.value, timestamp = null),
+                            onToggle = {
+                                completed.value = it
+                                stateObserved.set(it)
+                            },
+                            isHighlighted = true,
+                            onSinglePress = {}
+                        )
+                    }
+                }
             }
+            Log.i(tag, "STAGE 4: content set; waiting for accessibility node")
+            clickThroughAccessibility()
+            Log.i(tag, "STAGE 5: first ACTION_CLICK accepted")
+            waitForState(stateObserved, true)
+            Log.i(tag, "STAGE 6: completed; performing undo")
+            clickThroughAccessibility()
+            Log.i(tag, "STAGE 7: undo ACTION_CLICK accepted")
+            waitForState(stateObserved, false)
+            Log.i(tag, "STAGE 8: undo verified")
         }
-        Log.i(tag, "STAGE 3: setContent returned; before waitForIdle")
-        composeRule.waitForIdle()
-        Log.i(tag, "STAGE 4: idle; before first ACTION_CLICK")
-        clickThroughAccessibility()
-        Log.i(tag, "STAGE 5: first ACTION_CLICK accepted")
-        composeRule.waitUntil(10_000) { completed.value }
-        Log.i(tag, "STAGE 6: completed; before undo ACTION_CLICK")
-        clickThroughAccessibility()
-        Log.i(tag, "STAGE 7: undo ACTION_CLICK accepted")
-        composeRule.waitUntil(10_000) { !completed.value }
-        Log.i(tag, "STAGE 8: undo verified")
+    }
+
+    private fun waitForState(state: AtomicBoolean, expected: Boolean) {
+        repeat(40) {
+            if (state.get() == expected) return
+            Thread.sleep(250)
+        }
+        assertTrue("Expected completion state $expected, got ${state.get()}", state.get() == expected)
     }
 
     private fun clickThroughAccessibility() {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
-        var clicked = false
-        for (attempt in 0 until 20) {
+        repeat(40) {
             val root = automation.rootInActiveWindow
             if (root != null) {
                 try {
                     val target = findClickableAction(root)
                     if (target != null) {
                         try {
-                            clicked = target.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                            if (target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return
                         } finally {
                             target.recycle()
                         }
@@ -81,10 +87,9 @@ class AccessibilityActionTest {
                     root.recycle()
                 }
             }
-            if (clicked) break
             Thread.sleep(250)
         }
-        assertTrue("Android accessibility ACTION_CLICK was not accepted", clicked)
+        assertTrue("Android accessibility ACTION_CLICK was not accepted", false)
     }
 
     private fun findClickableAction(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
