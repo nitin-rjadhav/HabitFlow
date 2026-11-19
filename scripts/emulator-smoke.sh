@@ -105,12 +105,12 @@ test -s "$TEST_APK"
 adb install --bypass-low-target-sdk-block -r "$TEST_APK"
 # Explicit instrumentation class filter guarantees only the ACTION_CLICK test
 # runs, rather than the entire dashboard instrumentation suite.
-timeout --signal=TERM --kill-after=15s 3m adb shell am instrument -w \\
-  -e class com.ofalvai.habittracker.feature.dashboard.AccessibilityActionTest \\
-  com.ofalvai.habittracker.feature.dashboard.test/com.ofalvai.habittracker.core.testing.HiltTestRunner \\
+timeout --signal=TERM --kill-after=15s 3m adb shell am instrument -w \
+  -e class com.ofalvai.habittracker.feature.dashboard.AccessibilityActionTest \
+  com.ofalvai.habittracker.feature.dashboard.test/com.ofalvai.habittracker.core.testing.HiltTestRunner \
   | tee emulator-evidence/accessibility-instrumentation.txt
 # am instrument may exit 0 even when tests fail: require exactly one success.
-grep -Eq '^OK \\(1 test\\)' emulator-evidence/accessibility-instrumentation.txt
+grep -Eq '^OK \(1 test\)' emulator-evidence/accessibility-instrumentation.txt
 
 echo "Starting bounded database instrumentation tests (6 minute limit)"
 timeout --signal=TERM --kill-after=15s 6m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
