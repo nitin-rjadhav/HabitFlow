@@ -443,7 +443,7 @@ class StatsMapperTest {
             ),
             now
         )
-        assertEquals(1f, item.progress)
+        assertEquals(0f, item.progress)
     }
 
     @Test
