@@ -99,7 +99,10 @@ echo "Running accessibility ACTION_CLICK instrumentation test"
 timeout --signal=TERM --kill-after=30s 6m ./gradlew --no-daemon :feature-dashboard:assembleDebugAndroidTest
 TEST_APK="feature-dashboard/build/outputs/apk/androidTest/debug/feature-dashboard-debug-androidTest.apk"
 test -s "$TEST_APK"
-adb install -r "$TEST_APK"
+# The dashboard test APK targets SDK 21 (legacy module configuration).
+# Android 14+ blocks installation by default; this test-only override does not
+# alter the production app or its target SDK.
+adb install --bypass-low-target-sdk-block -r "$TEST_APK"
 # Explicit instrumentation class filter guarantees only the ACTION_CLICK test
 # runs, rather than the entire dashboard instrumentation suite.
 timeout --signal=TERM --kill-after=15s 3m adb shell am instrument -w \\
