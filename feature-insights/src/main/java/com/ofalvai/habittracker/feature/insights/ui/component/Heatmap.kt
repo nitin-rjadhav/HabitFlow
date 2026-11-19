@@ -73,6 +73,7 @@ import com.ofalvai.habittracker.core.ui.theme.LocalAppColors
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.feature.insights.R
 import com.ofalvai.habittracker.feature.insights.model.HeatmapMonth
+import com.ofalvai.habittracker.feature.insights.model.MonthlyComparison
 import com.ofalvai.habittracker.feature.insights.model.toMonthlySummary
 import com.ofalvai.habittracker.feature.insights.ui.InsightsIcons
 import com.ofalvai.habittracker.feature.insights.ui.InsightsViewModel
@@ -89,6 +90,7 @@ fun Heatmap(viewModel: InsightsViewModel) {
     var yearMonth by remember { mutableStateOf(YearMonth.now()) }
     val heatmapState by viewModel.heatmapState.collectAsState()
     val completedHabitsAtDate by viewModel.heatmapCompletedHabitsAtDate.collectAsState()
+    val comparison by viewModel.monthlyComparison.collectAsState()
 
     val onMonthChange: (YearMonth) -> Unit = {
         yearMonth = it
@@ -98,7 +100,7 @@ fun Heatmap(viewModel: InsightsViewModel) {
         viewModel.fetchCompletedHabitsAt(it)
     }
 
-    Heatmap(StableHolder(yearMonth), heatmapState, completedHabitsAtDate, onMonthChange, onLoadHabitsAt)
+    Heatmap(StableHolder(yearMonth), heatmapState, completedHabitsAtDate, onMonthChange, onLoadHabitsAt, comparison)
 }
 
 @Composable
@@ -107,7 +109,8 @@ fun Heatmap(
     heatmapState: Result<HeatmapMonth>,
     completedHabitsAtDate: ImmutableList<Habit>?,
     onMonthChange: (YearMonth) -> Unit,
-    onLoadHabitsAt: (LocalDate) -> Unit
+    onLoadHabitsAt: (LocalDate) -> Unit,
+    comparison: MonthlyComparison? = null
 ) {
     InsightCard(
         iconPainter = InsightsIcons.Heatmap,
@@ -134,6 +137,9 @@ fun Heatmap(
                     val enoughData = hasEnoughData(heatmapData)
 
                     MonthlySummaryRow(heatmapData)
+                    if (comparison?.yearMonth == heatmapData.yearMonth) {
+                        MonthlyComparisonLabel(comparison)
+                    }
 
                     if (!enoughData) {
                         EmptyView()
@@ -180,6 +186,22 @@ private fun MonthlySummaryRow(month: HeatmapMonth) {
             value = summary.bestDayCompletions
         )
     }
+}
+
+@Composable
+private fun MonthlyComparisonLabel(comparison: MonthlyComparison) {
+    val difference = comparison.difference
+    val signed = if (difference > 0) "+$difference" else difference.toString()
+    Text(
+        text = stringResource(
+            R.string.insights_month_comparison,
+            signed,
+            comparison.daysCompared
+        ),
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        textAlign = TextAlign.Center
+    )
 }
 
 @Composable
