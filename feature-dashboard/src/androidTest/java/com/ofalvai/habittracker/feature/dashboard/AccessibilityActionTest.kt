@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ofalvai.habittracker.core.model.Action
@@ -23,7 +25,13 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class AccessibilityActionTest {
     private val tag = "HabitFlowA11yTest"
-    @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule(order = 0) val traceRule = object : TestWatcher() {
+        override fun starting(description: Description) {
+            Log.i(tag, "RULE: TestWatcher starting before Compose activity rule")
+        }
+    }
+
+    @get:Rule(order = 1) val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
     fun accessibilityClickCompletesAndUndoesHabit() {
