@@ -126,6 +126,11 @@ fun Heatmap(
             when (heatmapState) {
                 is Result.Success -> {
                     val heatmapData = heatmapState.value
+                    // A month change is asynchronous: never display the previous
+                    // month's totals under the newly selected month header.
+                    if (heatmapData.yearMonth != yearMonth.item) {
+                        Spacer(Modifier.height(280.dp))
+                    } else {
                     val enoughData = hasEnoughData(heatmapData)
 
                     MonthlySummaryRow(heatmapData)
@@ -140,6 +145,7 @@ fun Heatmap(
                             heatmapData,
                             modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
                         )
+                    }
                     }
                 }
 
