@@ -39,4 +39,6 @@
     <string name="insights_month_active_days">Active days</string>
     <string name="insights_month_best_day">Best day</string>
     <string name="insights_month_comparison">%1$s completions vs previous month (first %2$d days)</string>
+    <string name="insights_activity_streaks">Longest active-day streak: %1$d · Ending streak: %2$d</string>
+    <string name="insights_weekly_activity">Weekly completions (Mon–Sun): %1$s</string>
 </resources>
