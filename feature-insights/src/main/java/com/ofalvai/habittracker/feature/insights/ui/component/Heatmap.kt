@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
@@ -290,6 +291,7 @@ private fun DayCell(
         modifier = Modifier
             .semantics(mergeDescendants = true) {
                 text = AnnotatedString(DateTimeFormatter.ofPattern("LL dd").format(day.date))
+                stateDescription = "${bucketInfo.value} completions"
             }
             .padding(4.dp)
             .then(todayModifier)
