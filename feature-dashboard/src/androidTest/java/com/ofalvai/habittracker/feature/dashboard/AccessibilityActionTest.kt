@@ -1,5 +1,6 @@
 package com.ofalvai.habittracker.feature.dashboard
 
+import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
@@ -20,11 +21,14 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class AccessibilityActionTest {
+    private val tag = "HabitFlowA11yTest"
     @get:Rule val composeRule = createComposeRule()
 
     @Test
     fun accessibilityClickCompletesAndUndoesHabit() {
+        Log.i(tag, "STAGE 1: test entered")
         val completed = mutableStateOf(false)
+        Log.i(tag, "STAGE 2: before setContent")
         composeRule.setContent {
             PreviewTheme {
                 ActionCircle(
@@ -36,11 +40,17 @@ class AccessibilityActionTest {
                 )
             }
         }
+        Log.i(tag, "STAGE 3: setContent returned; before waitForIdle")
         composeRule.waitForIdle()
+        Log.i(tag, "STAGE 4: idle; before first ACTION_CLICK")
         clickThroughAccessibility()
+        Log.i(tag, "STAGE 5: first ACTION_CLICK accepted")
         composeRule.waitUntil(10_000) { completed.value }
+        Log.i(tag, "STAGE 6: completed; before undo ACTION_CLICK")
         clickThroughAccessibility()
+        Log.i(tag, "STAGE 7: undo ACTION_CLICK accepted")
         composeRule.waitUntil(10_000) { !completed.value }
+        Log.i(tag, "STAGE 8: undo verified")
     }
 
     private fun clickThroughAccessibility() {
