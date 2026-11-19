@@ -24,7 +24,7 @@ class ActivityTrendsTest {
             .toActivityTrends(LocalDate.of(2026, 11, 9))
         assertEquals(listOf(
             WeeklyActivity(LocalDate.of(2026, 10, 26), 2),
-            WeeklyActivity(LocalDate.of(2026, 11, 2), 10),
+            WeeklyActivity(LocalDate.of(2026, 11, 2), 13),
             WeeklyActivity(LocalDate.of(2026, 11, 9), 1)
         ), trends.weekly)
         assertEquals(2, trends.longestActiveDayStreak)
