@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -83,7 +84,11 @@ fun HabitItem(
             .fillMaxWidth()
             .draggableCard(dragOffset)
             .background(MaterialTheme.colorScheme.background)
-            .clickable(onClick = { onDetailClick(habit.id) })
+            .clickable(
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.dashboard_item_details),
+                onClick = { onDetailClick(habit.id) }
+            )
             .padding(top = 4.dp)
     ) {
         Row(
