@@ -50,6 +50,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
@@ -69,6 +70,7 @@ import com.ofalvai.habittracker.core.ui.component.ErrorView
 import com.ofalvai.habittracker.core.ui.component.HorizontalMonthCalendar
 import com.ofalvai.habittracker.core.ui.recomposition.StableHolder
 import com.ofalvai.habittracker.core.ui.state.Result
+import com.ofalvai.habittracker.core.ui.theme.AppDimensions
 import com.ofalvai.habittracker.core.ui.theme.LocalAppColors
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.feature.insights.R
@@ -172,7 +174,7 @@ fun Heatmap(
 private fun MonthlySummaryRow(month: HeatmapMonth) {
     val summary = month.toMonthlySummary()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = AppDimensions.spacingMd),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         SummaryMetric(
@@ -193,7 +195,7 @@ private fun MonthlySummaryRow(month: HeatmapMonth) {
 @Composable
 private fun ActivityTrendsRow(month: HeatmapMonth) {
     val trends = month.toActivityTrends()
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = AppDimensions.spacingSm)) {
         Text(
             text = stringResource(
                 R.string.insights_activity_streaks,
@@ -230,10 +232,19 @@ private fun MonthlyComparisonLabel(comparison: MonthlyComparison) {
 }
 
 @Composable
-private fun SummaryMetric(label: String, value: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun androidx.compose.foundation.layout.RowScope.SummaryMetric(label: String, value: Int) {
+    Column(
+        modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {
+            contentDescription = "$label: $value"
+        },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Text(text = value.toString(), style = MaterialTheme.typography.titleLarge)
-        Text(text = label, style = MaterialTheme.typography.labelSmall)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
