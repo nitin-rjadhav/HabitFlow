@@ -3,7 +3,7 @@ package com.ofalvai.habittracker.feature.insights.model
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toImmutableMap
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -13,7 +13,7 @@ class MonthlySummaryTest {
             yearMonth = YearMonth.of(2026, 11),
             dayMap = entries.associate { (date, count) ->
                 date to HeatmapMonth.BucketInfo(0, count)
-            }.let { kotlinx.collections.immutable.toImmutableMap(it) },
+            }.toImmutableMap(),
             totalHabitCount = 4,
             bucketCount = 0,
             bucketMaxValues = persistentListOf()
