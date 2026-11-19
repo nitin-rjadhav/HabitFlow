@@ -28,6 +28,8 @@ import com.ofalvai.habittracker.feature.insights.mapper.mapHabitTopDay
 import com.ofalvai.habittracker.feature.insights.mapper.mapSumActionCountByDay
 import com.ofalvai.habittracker.feature.insights.mapper.toModel
 import com.ofalvai.habittracker.feature.insights.model.HeatmapMonth
+import com.ofalvai.habittracker.feature.insights.model.MonthlyComparison
+import com.ofalvai.habittracker.feature.insights.model.compareMonthlyCompletions
 import com.ofalvai.habittracker.feature.insights.model.TopDayItem
 import com.ofalvai.habittracker.feature.insights.model.TopHabitItem
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,6 +56,7 @@ class InsightsViewModel @Inject constructor(
 ): ViewModel() {
 
     val heatmapState = MutableStateFlow<Result<HeatmapMonth>>(Result.Loading)
+    val monthlyComparison = MutableStateFlow<MonthlyComparison?>(null)
     val topHabits = MutableStateFlow<Result<ImmutableList<TopHabitItem>>>(Result.Loading)
     val habitTopDays = MutableStateFlow<Result<ImmutableList<TopDayItem>>>(Result.Loading)
     val heatmapCompletedHabitsAtDate = MutableStateFlow<ImmutableList<Habit>?>(null)
@@ -99,20 +102,30 @@ class InsightsViewModel @Inject constructor(
     }
 
     private suspend fun reloadHeatmap(yearMonth: YearMonth) {
+        // Invalidate any prior comparison before loading a different month.
+        monthlyComparison.value = null
+        heatmapState.value = Result.Loading
         try {
             val startDate = yearMonth.atDay(1)
             val endDate = yearMonth.atEndOfMonth()
             val actionCountList = habitDao.getSumActionCountByDay(startDate, endDate)
             val habitCount = habitCount.first()
+            val month = mapSumActionCountByDay(actionCountList, yearMonth, habitCount)
 
-            heatmapState.value = Result.Success(
-                mapSumActionCountByDay(
-                    entityList = actionCountList,
-                    yearMonth,
-                    habitCount
+            // A comparison is supplementary: a failure fetching the previous
+            // month must not hide an otherwise valid current-month heatmap.
+            try {
+                val previousMonth = yearMonth.minusMonths(1)
+                val previousCounts = habitDao.getSumActionCountByDay(
+                    previousMonth.atDay(1), previousMonth.atEndOfMonth()
                 )
-            )
-        } catch (e: Throwable) {
+                val previous = mapSumActionCountByDay(previousCounts, previousMonth, habitCount)
+                monthlyComparison.value = compareMonthlyCompletions(month, previous)
+            } catch (e: Exception) {
+                telemetry.logNonFatal(e)
+            }
+            heatmapState.value = Result.Success(month)
+        } catch (e: Exception) {
             telemetry.logNonFatal(e)
             heatmapState.value = Result.Failure(e)
         }
