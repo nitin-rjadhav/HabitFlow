@@ -37,6 +37,7 @@ dependencies {
 
     androidTestImplementation project(':core-testing')
     androidTestImplementation libs.compose.ui.test
+    androidTestImplementation libs.androidx.activity.compose
     androidTestImplementation libs.hilt.testing
     androidTestImplementation libs.androidx.room.runtime
     kspAndroidTest libs.hilt.compiler
