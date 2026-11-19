@@ -99,10 +99,17 @@ echo "Running accessibility ACTION_CLICK instrumentation test"
 timeout --signal=TERM --kill-after=30s 6m ./gradlew --no-daemon :feature-dashboard:assembleDebugAndroidTest
 TEST_APK="feature-dashboard/build/outputs/apk/androidTest/debug/feature-dashboard-debug-androidTest.apk"
 test -s "$TEST_APK"
-# The dashboard test APK targets SDK 21 (legacy module configuration).
-# Android 14+ blocks installation by default; this test-only override does not
-# alter the production app or its target SDK.
-adb install --bypass-low-target-sdk-block -r "$TEST_APK"
+# The instrumentation activity must target SDK 23+; older targets trigger
+# Android's interactive Review Permissions UI and hang ActivityScenario.launch.
+adb install -r "$TEST_APK"
+TEST_PACKAGE="com.ofalvai.habittracker.feature.dashboard.test"
+adb shell dumpsys package "$TEST_PACKAGE" > emulator-evidence/test-package-installed.txt
+TEST_TARGET_SDK=$(grep -m1 -oE 'targetSdk=[0-9]+' emulator-evidence/test-package-installed.txt | cut -d= -f2)
+echo "Instrumented test target SDK: ${TEST_TARGET_SDK:-unknown}"
+if [[ -z "$TEST_TARGET_SDK" || "$TEST_TARGET_SDK" -lt 23 ]]; then
+  echo "::error::Instrumented test target SDK is below 23; Android may show blocking Review Permissions UI"
+  exit 1
+fi
 # Explicit instrumentation class filter guarantees only the ACTION_CLICK test
 # runs, rather than the entire dashboard instrumentation suite.
 # Capture instrumentation diagnostics *while the emulator is alive*. Previously
