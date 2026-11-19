@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Divider
@@ -72,6 +73,7 @@ import com.ofalvai.habittracker.core.ui.theme.LocalAppColors
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.feature.insights.R
 import com.ofalvai.habittracker.feature.insights.model.HeatmapMonth
+import com.ofalvai.habittracker.feature.insights.model.toMonthlySummary
 import com.ofalvai.habittracker.feature.insights.ui.InsightsIcons
 import com.ofalvai.habittracker.feature.insights.ui.InsightsViewModel
 import kotlinx.collections.immutable.ImmutableList
@@ -126,6 +128,8 @@ fun Heatmap(
                     val heatmapData = heatmapState.value
                     val enoughData = hasEnoughData(heatmapData)
 
+                    MonthlySummaryRow(heatmapData)
+
                     if (!enoughData) {
                         EmptyView()
                     }
@@ -147,6 +151,36 @@ fun Heatmap(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MonthlySummaryRow(month: HeatmapMonth) {
+    val summary = month.toMonthlySummary()
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        SummaryMetric(
+            label = stringResource(R.string.insights_month_completions),
+            value = summary.completions
+        )
+        SummaryMetric(
+            label = stringResource(R.string.insights_month_active_days),
+            value = summary.activeDays
+        )
+        SummaryMetric(
+            label = stringResource(R.string.insights_month_best_day),
+            value = summary.bestDayCompletions
+        )
+    }
+}
+
+@Composable
+private fun SummaryMetric(label: String, value: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = value.toString(), style = MaterialTheme.typography.titleLarge)
+        Text(text = label, style = MaterialTheme.typography.labelSmall)
     }
 }
 
