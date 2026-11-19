@@ -75,6 +75,7 @@ import com.ofalvai.habittracker.feature.insights.R
 import com.ofalvai.habittracker.feature.insights.model.HeatmapMonth
 import com.ofalvai.habittracker.feature.insights.model.MonthlyComparison
 import com.ofalvai.habittracker.feature.insights.model.toMonthlySummary
+import com.ofalvai.habittracker.feature.insights.model.toActivityTrends
 import com.ofalvai.habittracker.feature.insights.ui.InsightsIcons
 import com.ofalvai.habittracker.feature.insights.ui.InsightsViewModel
 import kotlinx.collections.immutable.ImmutableList
@@ -137,6 +138,7 @@ fun Heatmap(
                     val enoughData = hasEnoughData(heatmapData)
 
                     MonthlySummaryRow(heatmapData)
+                    ActivityTrendsRow(heatmapData)
                     if (comparison?.yearMonth == heatmapData.yearMonth) {
                         MonthlyComparisonLabel(comparison)
                     }
@@ -184,6 +186,29 @@ private fun MonthlySummaryRow(month: HeatmapMonth) {
         SummaryMetric(
             label = stringResource(R.string.insights_month_best_day),
             value = summary.bestDayCompletions
+        )
+    }
+}
+
+@Composable
+private fun ActivityTrendsRow(month: HeatmapMonth) {
+    val trends = month.toActivityTrends()
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        Text(
+            text = stringResource(
+                R.string.insights_activity_streaks,
+                trends.longestActiveDayStreak,
+                trends.endingActiveDayStreak
+            ),
+            style = MaterialTheme.typography.bodySmall
+        )
+        Text(
+            text = stringResource(
+                R.string.insights_weekly_activity,
+                trends.weekly.joinToString(" · ") { it.completions.toString() }
+                    .ifEmpty { "0" }
+            ),
+            style = MaterialTheme.typography.bodySmall
         )
     }
 }
