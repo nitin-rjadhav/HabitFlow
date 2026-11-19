@@ -105,10 +105,28 @@ test -s "$TEST_APK"
 adb install --bypass-low-target-sdk-block -r "$TEST_APK"
 # Explicit instrumentation class filter guarantees only the ACTION_CLICK test
 # runs, rather than the entire dashboard instrumentation suite.
+# Capture instrumentation diagnostics *while the emulator is alive*. Previously
+# logcat was collected only after the emulator action shut down the device,
+# yielding an empty log and obscuring the three-minute instrumentation hang.
+adb shell pm list instrumentation > emulator-evidence/instrumentation-registered.txt
+adb shell dumpsys package com.ofalvai.habittracker.feature.dashboard.test \
+  > emulator-evidence/instrumentation-package.txt
+adb logcat -c || true
+adb logcat -v threadtime > emulator-evidence/instrumentation-logcat.txt 2>&1 &
+LOGCAT_PID=$!
+set +e
 timeout --signal=TERM --kill-after=15s 3m adb shell am instrument -w \
   -e class com.ofalvai.habittracker.feature.dashboard.AccessibilityActionTest \
   com.ofalvai.habittracker.feature.dashboard.test/com.ofalvai.habittracker.core.testing.HiltTestRunner \
   | tee emulator-evidence/accessibility-instrumentation.txt
+INSTRUMENT_STATUS=${PIPESTATUS[0]}
+set -e
+kill "$LOGCAT_PID" 2>/dev/null || true
+wait "$LOGCAT_PID" 2>/dev/null || true
+if [[ "$INSTRUMENT_STATUS" -ne 0 ]]; then
+  echo "::error::Accessibility instrumentation failed or timed out (status $INSTRUMENT_STATUS); see instrumentation-logcat.txt"
+  exit "$INSTRUMENT_STATUS"
+fi
 # am instrument may exit 0 even when tests fail: require exactly one success.
 grep -Eq '^OK \(1 test\)' emulator-evidence/accessibility-instrumentation.txt
 
