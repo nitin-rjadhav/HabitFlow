@@ -71,6 +71,7 @@ class InsightsViewModel @Inject constructor(
     // Each calendar navigation supersedes earlier requests, even if the DAO
     // returns their results out of order.
     private var latestHeatmapRequest = 0L
+    private var latestDayRequest = 0L
 
     init {
         fetchStats()
@@ -87,13 +88,25 @@ class InsightsViewModel @Inject constructor(
     }
 
     fun fetchCompletedHabitsAt(date: LocalDate) {
+        // Clear the previous day's popup immediately; older asynchronous
+        // lookups must not replace the details for a newer selection.
+        val request = ++latestDayRequest
+        heatmapCompletedHabitsAtDate.value = null
         viewModelScope.launch {
             try {
-                heatmapCompletedHabitsAtDate.value = habitDao.getCompletedHabitsAt(date)
+                val habits = habitDao.getCompletedHabitsAt(date)
                     .map { it.toModel() }
                     .toImmutableList()
-            } catch (e: Throwable) {
+                if (request == latestDayRequest) {
+                    heatmapCompletedHabitsAtDate.value = habits
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 telemetry.logNonFatal(e)
+                if (request == latestDayRequest) {
+                    heatmapCompletedHabitsAtDate.value = kotlinx.collections.immutable.persistentListOf()
+                }
             }
         }
     }
