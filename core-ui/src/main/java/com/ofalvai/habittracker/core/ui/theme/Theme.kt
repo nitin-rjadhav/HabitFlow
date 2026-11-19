@@ -33,6 +33,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 
 val LightColors = lightColorScheme(
     primary = MaterialPalette.md_theme_light_primary,
@@ -148,7 +149,13 @@ val DarkAppColors = AppColors(
 
 val LocalAppColors = staticCompositionLocalOf { LightAppColors }
 
-private val shapes = Shapes()
+private val shapes = Shapes(
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
+)
 
 @Composable
 fun AppTheme(
@@ -172,7 +179,7 @@ fun AppTheme(
         shapes = shapes,
         typography = typography
     ) {
-        val appColors = if (isSystemInDarkTheme()) DarkAppColors else LightAppColors
+        val appColors = if (isDarkTheme) DarkAppColors else LightAppColors
         CompositionLocalProvider(LocalAppColors provides appColors) {
             content()
         }
