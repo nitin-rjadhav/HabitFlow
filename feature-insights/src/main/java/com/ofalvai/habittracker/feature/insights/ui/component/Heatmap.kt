@@ -281,6 +281,7 @@ private fun DayCell(
     onDayClick: (LocalDate) -> Unit
 ) {
     val today = LocalDate.now()
+    val completionDescription = stringResource(R.string.insights_day_completion_count, bucketInfo.value)
     val color = MaterialTheme.colorScheme.tertiary
         .adjustToBucketIndex(bucketInfo.bucketIndex, bucketCount)
 
@@ -291,7 +292,7 @@ private fun DayCell(
         modifier = Modifier
             .semantics(mergeDescendants = true) {
                 text = AnnotatedString(DateTimeFormatter.ofPattern("LL dd").format(day.date))
-                stateDescription = "${bucketInfo.value} completions"
+                stateDescription = completionDescription
             }
             .padding(4.dp)
             .then(todayModifier)
