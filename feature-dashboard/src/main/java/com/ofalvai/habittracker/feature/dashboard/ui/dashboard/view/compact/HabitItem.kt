@@ -57,6 +57,7 @@ import com.ofalvai.habittracker.core.model.Habit
 import com.ofalvai.habittracker.core.model.HabitId
 import com.ofalvai.habittracker.core.ui.component.HorizontalGrid
 import com.ofalvai.habittracker.core.ui.semantics.habitActionSemantics
+import com.ofalvai.habittracker.core.ui.theme.AppDimensions
 import com.ofalvai.habittracker.core.ui.theme.AppTextStyle
 import com.ofalvai.habittracker.core.ui.theme.CoreIcons
 import com.ofalvai.habittracker.core.ui.theme.LocalAppColors
@@ -97,7 +98,7 @@ fun HabitItem(
                 style = AppTextStyle.habitTitleSmall
             )
             IconButton(
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(AppDimensions.minTouchTarget),
                 onClick = { onDetailClick(habit.id) }
             ) {
                 Icon(
