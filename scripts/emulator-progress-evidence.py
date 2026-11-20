@@ -195,7 +195,9 @@ try:
     # A failed save must be diagnosed as a form-navigation problem, not
     # misreported as a dashboard progress-count failure.
     after_save = nodes()
-    if any(n.attrib.get("text") == "Create new habit" for n in after_save):
+    # "Create new habit" is also the populated dashboard's add-another-habit CTA.
+    # Check for the editable form itself rather than matching that shared label.
+    if any(n.attrib.get("class") == "android.widget.EditText" for n in after_save):
         (OUT / "progress-save-still-on-form.txt").write_text(
             "\\n".join(str(n.attrib) for n in after_save)
         )
