@@ -86,7 +86,7 @@ fun HabitItem(
             .background(MaterialTheme.colorScheme.background)
             .clickable(
                 role = Role.Button,
-                onClickLabel = stringResource(R.string.dashboard_item_details),
+                onClickLabel = "${stringResource(R.string.dashboard_item_details)}: ${habit.name}",
                 onClick = { onDetailClick(habit.id) }
             )
             .padding(top = 4.dp)
@@ -108,7 +108,7 @@ fun HabitItem(
             ) {
                 Icon(
                     CoreIcons.ChevronRight,
-                    contentDescription = stringResource(R.string.dashboard_item_details)
+                    contentDescription = null
                 )
             }
         }
