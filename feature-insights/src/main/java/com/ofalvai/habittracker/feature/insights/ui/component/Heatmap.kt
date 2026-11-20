@@ -327,10 +327,10 @@ private fun DayPopup(
                 .shadow(4.dp, shape)
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(12.dp)
+                .padding(AppDimensions.spacingMd)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(0.5f)
+                modifier = Modifier.fillMaxWidth(0.85f)
             ) {
                 Text(
                     text = LocalContext.current.resources.getQuantityString(
@@ -343,7 +343,7 @@ private fun DayPopup(
                 Divider(Modifier.padding(bottom = 8.dp, top = 4.dp))
                 Text(
                     text = habits.joinToString(separator = "\n") { it.name },
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
 
