@@ -416,8 +416,15 @@ private fun HeatmapLegend(
                 val backgroundColor = MaterialTheme.colorScheme.tertiary.adjustToBucketIndex(
                     bucketIndex, heatmapData.bucketCount
                 )
+                val bucketDescription = stringResource(
+                    R.string.insights_heatmap_legend_bucket,
+                    maxValue
+                )
                 Box(
-                    Modifier.background(backgroundColor).size(24.dp)
+                    Modifier
+                        .background(backgroundColor)
+                        .size(24.dp)
+                        .semantics { contentDescription = bucketDescription }
                 ) {
                     Text(
                         text = maxValue.toString(),
