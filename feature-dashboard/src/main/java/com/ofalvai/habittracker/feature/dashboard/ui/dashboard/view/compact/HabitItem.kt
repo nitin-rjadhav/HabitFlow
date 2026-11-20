@@ -100,7 +100,7 @@ fun HabitItem(
         ) {
             Text(
                 modifier = Modifier
-                    .padding(start = AppDimensions.spacingMd)
+                    .padding(start = AppDimensions.spacingMd, end = AppDimensions.spacingSm)
                     .weight(1f)
                     .align(Alignment.CenterVertically),
                 text = habit.name,
@@ -215,7 +215,7 @@ fun PreviewHabitItem() {
     )
     val habit2 = Habit(
         id = 2,
-        name = "Workout",
+        name = "Evening workout and mindful stretching routine",
         color = Habit.Color.Green,
         notes = ""
     )
@@ -236,9 +236,9 @@ fun PreviewHabitItem() {
     }
 
     PreviewTheme {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(AppDimensions.spacingMd)) {
             HabitItem(habit1, actions1.toImmutableList(), { _, _, _ -> }, {}, 0f)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(AppDimensions.spacingMd))
             HabitItem(habit2, actions2.toImmutableList(), { _, _, _ -> }, {}, 0f)
         }
     }
