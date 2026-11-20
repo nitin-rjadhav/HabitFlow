@@ -145,15 +145,30 @@ try:
         "\\n".join(str(n.attrib) for n in save_nodes)
     )
     def save_candidates(current_nodes):
-        # Compose can merge a button label into a child accessibility node.
-        # Match clickable nodes containing the exact label, not unrelated headings.
-        return [
+        # UIAutomator reports the Compose Button as an unnamed clickable parent,
+        # while its "Create habit" Text child is non-clickable. Find the exact
+        # text node and the smallest clickable rectangle containing its center.
+        # This avoids confusing the form title with the Save button.
+        labels = [
             n for n in current_nodes
-            if n.attrib.get("clickable") == "true"
-            and any(label == "create habit" for label in (
-                n.attrib.get("text", "").strip().lower(),
-                n.attrib.get("content-desc", "").strip().lower()))
+            if n.attrib.get("text", "").strip().lower() == "create habit"
+            or n.attrib.get("content-desc", "").strip().lower() == "create habit"
         ]
+        if len(labels) != 1:
+            return []
+        x, y = center(labels[0])
+        enclosing = []
+        for n in current_nodes:
+            if n.attrib.get("clickable") != "true":
+                continue
+            values = list(map(int, re.findall(r"\\d+", n.attrib.get("bounds", ""))))
+            if len(values) == 4 and values[0] <= x <= values[2] and values[1] <= y <= values[3]:
+                area = (values[2] - values[0]) * (values[3] - values[1])
+                enclosing.append((area, n))
+        if not enclosing:
+            return []
+        smallest = min(area for area, _ in enclosing)
+        return [n for area, n in enclosing if area == smallest]
 
     save_buttons = save_candidates(save_nodes)
     # Scroll the actual form until the bottom action is exposed. A single swipe
