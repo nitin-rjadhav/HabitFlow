@@ -269,8 +269,10 @@ private fun HeatmapCalendar(
         onLoadHabitsAt(it)
     }
 
-    if (selectedDate != null && completedHabitsAtDate != null) {
-        DayPopup(selectedDate!!, completedHabitsAtDate, onDismiss = { selectedDate = null })
+    selectedDate?.let { date ->
+        if (completedHabitsAtDate != null) {
+            DayPopup(date, completedHabitsAtDate, onDismiss = { selectedDate = null })
+        }
     }
 
     HorizontalMonthCalendar(yearMonth, onMonthSwipe) {
