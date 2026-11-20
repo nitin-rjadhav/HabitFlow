@@ -356,17 +356,26 @@ private fun DayPopup(
                     modifier = Modifier.semantics { heading() }
                 )
                 Divider(Modifier.padding(bottom = AppDimensions.spacingSm, top = AppDimensions.spacingXs))
-                Text(
-                    text = if (habits.isEmpty()) {
-                        stringResource(R.string.insights_heatmap_no_completed_habits)
-                    } else {
-                        habits.joinToString(separator = "\n") { it.name }
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
+                Column(
                     modifier = Modifier
                         .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState())
-                )
+                ) {
+                    if (habits.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.insights_heatmap_no_completed_habits),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        habits.forEach { habit ->
+                            Text(
+                                text = habit.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(vertical = AppDimensions.spacingXs)
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(AppDimensions.spacingSm))
                 TextButton(
                     onClick = onDismiss,
