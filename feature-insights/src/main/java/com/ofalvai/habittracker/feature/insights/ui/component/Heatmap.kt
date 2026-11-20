@@ -299,7 +299,7 @@ private fun DayCell(
     Box(
         modifier = Modifier
             .semantics(mergeDescendants = true) {
-                text = AnnotatedString(DateTimeFormatter.ofPattern("LL dd yyyy").format(day.date))
+                text = AnnotatedString(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(day.date))
                 stateDescription = completionDescription
             }
             .padding(4.dp)
