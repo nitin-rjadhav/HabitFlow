@@ -112,6 +112,7 @@ fun AddHabitForm(
             value = name,
             onValueChange = { name = it; if (it.isNotBlank()) isNameValid = true },
             label = { Text(stringResource(R.string.addhabit_name_label)) },
+            isError = !isNameValid,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
@@ -137,6 +138,8 @@ fun AddHabitForm(
             value = notes,
             onValueChange = { notes = it },
             label = { Text(stringResource(R.string.addhabit_notes_label)) },
+            minLines = 3,
+            maxLines = 5,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 imeAction = ImeAction.None
