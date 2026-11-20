@@ -62,7 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.Dialog
 import com.airbnb.android.showkase.annotation.ShowkaseComposable
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
@@ -318,10 +318,7 @@ private fun DayPopup(
     habits: ImmutableList<Habit>,
     onDismiss: () -> Unit
 ) {
-    Popup(
-        alignment = Alignment.Center,
-        onDismissRequest = onDismiss,
-    ) {
+    Dialog(onDismissRequest = onDismiss) {
         val shape = MaterialTheme.shapes.small
         Box(
             Modifier
