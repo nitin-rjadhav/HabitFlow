@@ -67,11 +67,17 @@ def screenshot(name):
     (OUT / name).write_bytes(data)
 
 def assert_count(expected):
-    for _ in range(8):
-        if any(expected in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")) for n in nodes()):
+    last_nodes = []
+    # CI emulators can be slow to navigate back and refresh Room-backed totals.
+    for _ in range(20):
+        last_nodes = nodes()
+        if any(expected in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")) for n in last_nodes):
             report.append("PASS: " + expected)
             return
         time.sleep(1)
+    (OUT / "progress-count-timeout-hierarchy.txt").write_text(
+        "\\n".join(str(n.attrib) for n in last_nodes)
+    )
     raise RuntimeError("Expected progress count not shown: " + expected)
 
 try:
