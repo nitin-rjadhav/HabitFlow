@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -360,6 +361,13 @@ private fun DayPopup(
                     text = habits.joinToString(separator = "\n") { it.name },
                     style = MaterialTheme.typography.bodyMedium
                 )
+                Spacer(Modifier.height(AppDimensions.spacingSm))
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text(stringResource(R.string.insights_heatmap_close_details))
+                }
             }
 
         }
