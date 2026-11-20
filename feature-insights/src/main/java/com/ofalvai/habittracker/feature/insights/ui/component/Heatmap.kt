@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
@@ -338,9 +339,10 @@ private fun DayPopup(
                         habits.size,
                         habits.size
                     ),
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.semantics { heading() }
                 )
-                Divider(Modifier.padding(bottom = 8.dp, top = 4.dp))
+                Divider(Modifier.padding(bottom = AppDimensions.spacingSm, top = AppDimensions.spacingXs))
                 Text(
                     text = habits.joinToString(separator = "\n") { it.name },
                     style = MaterialTheme.typography.bodyMedium
