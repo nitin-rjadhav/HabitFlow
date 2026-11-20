@@ -79,6 +79,8 @@ fun HabitItem(
     dragOffset: Float,
     modifier: Modifier = Modifier
 ) {
+    val detailsLabel = "${stringResource(R.string.dashboard_item_details)}: ${habit.name}"
+
     Column(
         modifier
             .fillMaxWidth()
@@ -86,7 +88,7 @@ fun HabitItem(
             .background(MaterialTheme.colorScheme.background)
             .clickable(
                 role = Role.Button,
-                onClickLabel = "${stringResource(R.string.dashboard_item_details)}: ${habit.name}",
+                onClickLabel = detailsLabel,
                 onClick = { onDetailClick(habit.id) }
             )
             .padding(top = 4.dp)
@@ -108,7 +110,7 @@ fun HabitItem(
             ) {
                 Icon(
                     CoreIcons.ChevronRight,
-                    contentDescription = null
+                    contentDescription = detailsLabel
                 )
             }
         }
