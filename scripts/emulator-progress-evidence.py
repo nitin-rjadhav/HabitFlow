@@ -150,6 +150,20 @@ try:
         and (n.attrib.get("text", "").strip().lower() == "create habit"
              or n.attrib.get("content-desc", "").strip().lower() == "create habit")
     ]
+    if not save_buttons:
+        # Compose may omit the Save button from UIAutomator when it is below
+        # the viewport in the vertically scrollable create-habit form.
+        adb("shell", "input", "swipe", "540", "1650", "540", "420", "450")
+        save_nodes = nodes()
+        (OUT / "progress-after-scroll-hierarchy.txt").write_text(
+            "\n".join(str(n.attrib) for n in save_nodes)
+        )
+        save_buttons = [
+            n for n in save_nodes
+            if n.attrib.get("clickable") == "true"
+            and (n.attrib.get("text", "").strip().lower() == "create habit"
+                 or n.attrib.get("content-desc", "").strip().lower() == "create habit")
+        ]
     if len(save_buttons) != 1:
         raise RuntimeError(f"Expected one clickable Create habit button, found {len(save_buttons)}")
     tap(save_buttons[0])
