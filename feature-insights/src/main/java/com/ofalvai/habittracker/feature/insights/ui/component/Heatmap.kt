@@ -357,7 +357,11 @@ private fun DayPopup(
                 )
                 Divider(Modifier.padding(bottom = AppDimensions.spacingSm, top = AppDimensions.spacingXs))
                 Text(
-                    text = habits.joinToString(separator = "\n") { it.name },
+                    text = if (habits.isEmpty()) {
+                        stringResource(R.string.insights_heatmap_no_completed_habits)
+                    } else {
+                        habits.joinToString(separator = "\n") { it.name }
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
                         .weight(1f, fill = false)
