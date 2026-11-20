@@ -138,8 +138,21 @@ try:
     # while the focused text field remains active.
     adb("shell", "input", "keyevent", "4")
     time.sleep(1)
-    save = find("Create habit")
-    tap(save)
+    # Match the actual clickable Save control, not a similarly named heading
+    # or parent semantics node. Record the candidate hierarchy for CI triage.
+    save_nodes = nodes()
+    (OUT / "progress-before-save-hierarchy.txt").write_text(
+        "\\n".join(str(n.attrib) for n in save_nodes)
+    )
+    save_buttons = [
+        n for n in save_nodes
+        if n.attrib.get("clickable") == "true"
+        and (n.attrib.get("text", "").strip().lower() == "create habit"
+             or n.attrib.get("content-desc", "").strip().lower() == "create habit")
+    ]
+    if len(save_buttons) != 1:
+        raise RuntimeError(f"Expected one clickable Create habit button, found {len(save_buttons)}")
+    tap(save_buttons[0])
     time.sleep(4)
     # A failed save must be diagnosed as a form-navigation problem, not
     # misreported as a dashboard progress-count failure.
