@@ -92,6 +92,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 fun Heatmap(viewModel: InsightsViewModel) {
@@ -269,7 +270,7 @@ private fun HeatmapCalendar(
     }
 
     if (selectedDate != null && completedHabitsAtDate != null) {
-        DayPopup(completedHabitsAtDate, onDismiss = { selectedDate = null })
+        DayPopup(selectedDate!!, completedHabitsAtDate, onDismiss = { selectedDate = null })
     }
 
     HorizontalMonthCalendar(yearMonth, onMonthSwipe) {
@@ -318,6 +319,7 @@ private fun DayCell(
 
 @Composable
 private fun DayPopup(
+    date: LocalDate,
     habits: ImmutableList<Habit>,
     onDismiss: () -> Unit
 ) {
@@ -336,6 +338,12 @@ private fun DayPopup(
                     .heightIn(max = 440.dp)
                     .verticalScroll(rememberScrollState())
             ) {
+                Text(
+                    text = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Spacer(Modifier.height(AppDimensions.spacingSm))
                 Text(
                     text = LocalContext.current.resources.getQuantityString(
                         R.plurals.insights_heatmap_popup_action_count,
