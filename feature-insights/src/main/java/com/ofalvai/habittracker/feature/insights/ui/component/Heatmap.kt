@@ -58,6 +58,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
@@ -278,7 +279,7 @@ private fun HeatmapCalendar(
 
     HorizontalMonthCalendar(yearMonth, onMonthSwipe) {
         val dayData = heatmapData.dayMap[it.date] ?: HeatmapMonth.BucketInfo(0, 0)
-        DayCell(it, dayData, heatmapData.bucketCount, onDayClick)
+        DayCell(it, dayData, heatmapData.bucketCount, selectedDate == it.date, onDayClick)
     }
 }
 
@@ -287,6 +288,7 @@ private fun DayCell(
     day: CalendarDay,
     bucketInfo: HeatmapMonth.BucketInfo,
     bucketCount: Int,
+    isSelected: Boolean,
     onDayClick: (LocalDate) -> Unit
 ) {
     val today = LocalDate.now()
@@ -294,17 +296,20 @@ private fun DayCell(
     val color = MaterialTheme.colorScheme.tertiary
         .adjustToBucketIndex(bucketInfo.bucketIndex, bucketCount)
 
-    val todayModifier = if (today == day.date) {
-        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-    } else Modifier
+    val dayOutline = when {
+        isSelected -> Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
+        today == day.date -> Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+        else -> Modifier
+    }
     Box(
         modifier = Modifier
             .semantics(mergeDescendants = true) {
                 text = AnnotatedString(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(day.date))
                 stateDescription = completionDescription
+                selected = isSelected
             }
             .padding(4.dp)
-            .then(todayModifier)
+            .then(dayOutline)
             .clip(CircleShape)
             .clickable(role = Role.Button) { onDayClick(day.date) }
             .aspectRatio(1f)
