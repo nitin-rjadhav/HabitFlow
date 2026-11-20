@@ -75,9 +75,11 @@ def assert_count(expected):
             report.append("PASS: " + expected)
             return
         time.sleep(1)
-    (OUT / "progress-count-timeout-hierarchy.txt").write_text(
-        "\\n".join(str(n.attrib) for n in last_nodes)
-    )
+    diagnostic = "\\n".join(str(n.attrib) for n in last_nodes)
+    (OUT / "progress-count-timeout-hierarchy.txt").write_text(diagnostic)
+    print("Progress assertion failed; current visible UI nodes:", flush=True)
+    for node in last_nodes[:80]:
+        print(node.attrib, flush=True)
     raise RuntimeError("Expected progress count not shown: " + expected)
 
 try:
