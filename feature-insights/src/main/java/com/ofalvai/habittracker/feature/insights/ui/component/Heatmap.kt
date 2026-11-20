@@ -262,14 +262,14 @@ private fun HeatmapCalendar(
     onLoadHabitsAt: (LocalDate) -> Unit,
     onMonthSwipe: (YearMonth) -> Unit
 ) {
-    var showPopup by remember(yearMonth.item) { mutableStateOf(false) }
+    var selectedDate by remember(yearMonth.item) { mutableStateOf<LocalDate?>(null) }
     val onDayClick: (LocalDate) -> Unit = {
+        selectedDate = it
         onLoadHabitsAt(it)
-        showPopup = true
     }
 
-    if (showPopup && completedHabitsAtDate != null) {
-        DayPopup(completedHabitsAtDate, onDismiss = { showPopup = false })
+    if (selectedDate != null && completedHabitsAtDate != null) {
+        DayPopup(completedHabitsAtDate, onDismiss = { selectedDate = null })
     }
 
     HorizontalMonthCalendar(yearMonth, onMonthSwipe) {
