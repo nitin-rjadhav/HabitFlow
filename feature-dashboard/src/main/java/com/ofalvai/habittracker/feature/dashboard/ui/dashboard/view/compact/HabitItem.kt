@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -100,9 +101,12 @@ fun HabitItem(
             Text(
                 modifier = Modifier
                     .padding(start = AppDimensions.spacingMd)
+                    .weight(1f)
                     .align(Alignment.CenterVertically),
                 text = habit.name,
-                style = AppTextStyle.habitTitleSmall
+                style = AppTextStyle.habitTitleSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
             IconButton(
                 modifier = Modifier.size(AppDimensions.minTouchTarget),
