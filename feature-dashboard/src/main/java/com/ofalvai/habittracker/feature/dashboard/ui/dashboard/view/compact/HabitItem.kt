@@ -91,7 +91,7 @@ fun HabitItem(
                 onClickLabel = detailsLabel,
                 onClick = { onDetailClick(habit.id) }
             )
-            .padding(top = 4.dp)
+            .padding(top = AppDimensions.spacingXs)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -99,7 +99,7 @@ fun HabitItem(
         ) {
             Text(
                 modifier = Modifier
-                    .padding(start = 16.dp)
+                    .padding(start = AppDimensions.spacingMd)
                     .align(Alignment.CenterVertically),
                 text = habit.name,
                 style = AppTextStyle.habitTitleSmall
@@ -154,7 +154,7 @@ fun ActionSquares(
             Text(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = AppDimensions.spacingMd),
                 text = stringResource(R.string.dashboard_toggle_help),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center
