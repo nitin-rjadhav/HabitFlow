@@ -24,6 +24,7 @@
         <item quantity="one">%d completed habit</item>
         <item quantity="other">%d completed habits</item>
     </plurals>
+    <string name="insights_heatmap_close_details">Close details</string>
     <string name="insights_heatmap_error">Failed to load heatmap</string>
     <string name="insights_heatmap_empty_label">Once you create habits and perform them, this calendar will show how successful each day was.</string>
     <string name="insights_tophabits_title">Top habits</string>
