@@ -134,8 +134,21 @@ try:
         raise RuntimeError("Habit form has no accessible name field")
     tap(fields[0])
     adb("shell", "input", "text", "Meditation")
-    tap(find("Create habit"))
+    # Dismiss the IME before tapping Save: it may intercept the first tap
+    # while the focused text field remains active.
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(1)
+    save = find("Create habit")
+    tap(save)
     time.sleep(4)
+    # A failed save must be diagnosed as a form-navigation problem, not
+    # misreported as a dashboard progress-count failure.
+    after_save = nodes()
+    if any(n.attrib.get("text") == "Create new habit" for n in after_save):
+        (OUT / "progress-save-still-on-form.txt").write_text(
+            "\\n".join(str(n.attrib) for n in after_save)
+        )
+        raise RuntimeError("Create Habit form remained open after Save tap")
     assert_count("0 of 1 completed")
     screenshot("progress-zero-of-one.png")
     # Android exposes each daily action with a relative date and toggle state.
