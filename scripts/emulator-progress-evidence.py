@@ -49,6 +49,17 @@ def find(text):
         raise RuntimeError("Cannot find UI label: " + text)
     return matches[0]
 
+def dismiss_launcher_anr(current_nodes):
+    """Dismiss a system launcher ANR if it obscures the app under test."""
+    if not any("Pixel Launcher isn\'t responding" in n.attrib.get("text", "") for n in current_nodes):
+        return False
+    close = next((n for n in current_nodes if n.attrib.get("resource-id") == "android:id/aerr_close"), None)
+    if close is None:
+        return False
+    tap(close)
+    report.append("INFO: dismissed unresponsive Pixel Launcher dialog")
+    return True
+
 def screenshot(name):
     data = adb("exec-out", "screencap", "-p", timeout=30)
     if not data.startswith(b"\x89PNG"):
@@ -74,6 +85,9 @@ try:
     # Poll the actual dashboard CTA rather than failing on a single early dump.
     for attempt in range(12):
         initial_nodes = nodes()
+        if dismiss_launcher_anr(initial_nodes):
+            time.sleep(2)
+            initial_nodes = nodes()
         (OUT / "progress-launch-hierarchy.txt").write_text(
             "\n".join(str(n.attrib) for n in initial_nodes)
         )
