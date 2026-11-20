@@ -161,7 +161,7 @@ try:
         for n in current_nodes:
             if n.attrib.get("clickable") != "true":
                 continue
-            values = list(map(int, re.findall(r"\\d+", n.attrib.get("bounds", ""))))
+            values = list(map(int, re.findall(r"\d+", n.attrib.get("bounds", ""))))
             if len(values) == 4 and values[0] <= x <= values[2] and values[1] <= y <= values[3]:
                 area = (values[2] - values[0]) * (values[3] - values[1])
                 enclosing.append((area, n))
