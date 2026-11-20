@@ -79,7 +79,7 @@ fun AddHabitForm(
     var name by rememberSaveable { mutableStateOf("") }
     var notes by rememberSaveable { mutableStateOf("") }
     var color by rememberSaveable { mutableStateOf(Habit.DEFAULT_COLOR) }
-    var isNameValid by remember { mutableStateOf(true) }
+    var isNameValid by rememberSaveable { mutableStateOf(true) }
 
     val onSaveClick: () -> Unit = {
         if (name.isBlank()) {
@@ -130,6 +130,7 @@ fun AddHabitForm(
 
         Suggestions(habits = Suggestions.habits, onSelect = {
             name = it
+            isNameValid = true
             nameFocusRequester.requestFocus()
         })
 
@@ -142,7 +143,7 @@ fun AddHabitForm(
             maxLines = 5,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
-                imeAction = ImeAction.None
+                imeAction = ImeAction.Done
             ),
             colors = customTextFieldColors
         )
@@ -158,7 +159,8 @@ fun AddHabitForm(
         Button(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = AppDimensions.spacingMd, start = AppDimensions.spacingXl, end = AppDimensions.spacingXl),
+                .padding(top = AppDimensions.spacingMd, start = AppDimensions.spacingXl, end = AppDimensions.spacingXl)
+                .heightIn(min = 48.dp),
             onClick = onSaveClick,
             colors = ButtonDefaults.buttonColors(containerColor = selectedHabitColor)
         ) {
