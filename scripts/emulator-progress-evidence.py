@@ -144,27 +144,36 @@ try:
     (OUT / "progress-before-save-hierarchy.txt").write_text(
         "\\n".join(str(n.attrib) for n in save_nodes)
     )
-    save_buttons = [
-        n for n in save_nodes
-        if n.attrib.get("clickable") == "true"
-        and (n.attrib.get("text", "").strip().lower() == "create habit"
-             or n.attrib.get("content-desc", "").strip().lower() == "create habit")
-    ]
-    if not save_buttons:
-        # Compose may omit the Save button from UIAutomator when it is below
-        # the viewport in the vertically scrollable create-habit form.
+    def save_candidates(current_nodes):
+        # Compose can merge a button label into a child accessibility node.
+        # Match clickable nodes containing the exact label, not unrelated headings.
+        return [
+            n for n in current_nodes
+            if n.attrib.get("clickable") == "true"
+            and any(label == "create habit" for label in (
+                n.attrib.get("text", "").strip().lower(),
+                n.attrib.get("content-desc", "").strip().lower()))
+        ]
+
+    save_buttons = save_candidates(save_nodes)
+    # Scroll the actual form until the bottom action is exposed. A single swipe
+    # is insufficient on smaller emulator displays or with expanded notes.
+    for scroll_attempt in range(3):
+        if save_buttons:
+            break
         adb("shell", "input", "swipe", "540", "1650", "540", "420", "450")
         save_nodes = nodes()
-        (OUT / "progress-after-scroll-hierarchy.txt").write_text(
-            "\n".join(str(n.attrib) for n in save_nodes)
+        (OUT / f"progress-after-scroll-{scroll_attempt + 1}-hierarchy.txt").write_text(
+            "\\n".join(str(n.attrib) for n in save_nodes)
         )
-        save_buttons = [
-            n for n in save_nodes
-            if n.attrib.get("clickable") == "true"
-            and (n.attrib.get("text", "").strip().lower() == "create habit"
-                 or n.attrib.get("content-desc", "").strip().lower() == "create habit")
-        ]
+        save_buttons = save_candidates(save_nodes)
     if len(save_buttons) != 1:
+        print("Save control not found; visible labels and clickability:", flush=True)
+        for node in save_nodes:
+            label = node.attrib.get("text", "") or node.attrib.get("content-desc", "")
+            if label or node.attrib.get("clickable") == "true":
+                print({"label": label, "clickable": node.attrib.get("clickable"),
+                       "bounds": node.attrib.get("bounds")}, flush=True)
         raise RuntimeError(f"Expected one clickable Create habit button, found {len(save_buttons)}")
     tap(save_buttons[0])
     time.sleep(4)
