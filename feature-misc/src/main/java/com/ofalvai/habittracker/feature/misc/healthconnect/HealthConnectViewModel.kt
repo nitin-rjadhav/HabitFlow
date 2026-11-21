@@ -81,7 +81,8 @@ class HealthConnectViewModel @Inject constructor(
     private val habitDao: HabitDao,
     private val mappingDao: ExerciseMappingDao,
     private val exerciseReader: HealthConnectExerciseReader,
-    private val autoCompletionDao: ExerciseAutoCompletionDao
+    private val autoCompletionDao: ExerciseAutoCompletionDao,
+    private val syncReceiptStore: ExerciseSyncReceiptStore
 ) : ViewModel() {
     private val _status = MutableStateFlow<HealthConnectStatus?>(null)
     val status: StateFlow<HealthConnectStatus?> = _status
@@ -114,6 +115,10 @@ class HealthConnectViewModel @Inject constructor(
     private var syncJob: Job? = null
     private val _syncState = MutableStateFlow<ExerciseSyncState?>(null)
     val syncState: StateFlow<ExerciseSyncState?> = _syncState
+
+    // Last *finished* explicit sync, not a periodic/background sync indicator.
+    private val _lastSyncReceipt = MutableStateFlow(syncReceiptStore.read())
+    val lastSyncReceipt: StateFlow<ExerciseSyncReceipt?> = _lastSyncReceipt
     private val _applyState = MutableStateFlow<ExerciseApplyState?>(null)
     val applyState: StateFlow<ExerciseApplyState?> = _applyState
 
@@ -366,6 +371,19 @@ class HealthConnectViewModel @Inject constructor(
                     }
                 }
                 _syncState.value = ExerciseSyncState.Finished(applied, unchanged, failed)
+                val receipt = ExerciseSyncReceipt(
+                    Instant.now().toEpochMilli(), applied, unchanged, failed
+                )
+                // Persistence failures must not misreport the completed sync as failed:
+                // some habit actions may already have been committed.
+                try {
+                    syncReceiptStore.write(receipt)
+                    _lastSyncReceipt.value = receipt
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // The in-memory result remains truthful for this session.
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (revoked: SecurityException) {
@@ -405,6 +423,8 @@ class HealthConnectViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 mappingDao.removeAllMappings()
+                syncReceiptStore.clear()
+                _lastSyncReceipt.value = null
                 _mappingError.value = null
             } catch (cancelled: CancellationException) {
                 throw cancelled

@@ -44,6 +44,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.PermissionController
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.ofalvai.habittracker.feature.misc.healthconnect.ExercisePreviewState
@@ -79,11 +82,12 @@ fun HealthConnectScreen(
     val preview by viewModel.preview.collectAsState()
     val applyState by viewModel.applyState.collectAsState()
     val syncState by viewModel.syncState.collectAsState()
+    val lastSyncReceipt by viewModel.lastSyncReceipt.collectAsState()
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         SupportedHealthConnectScreen(
             viewModel, status, navigateBack, habits, mappings, completionHistory,
-            mappingError, preview, applyState, syncState
+            mappingError, preview, applyState, syncState, lastSyncReceipt
         )
     } else {
         HealthConnectContent(
@@ -99,6 +103,7 @@ fun HealthConnectScreen(
             preview = null,
             applyState = null,
             syncState = null,
+            lastSyncReceipt = null,
             onSync = {},
             onPreview = {},
             onApply = {},
@@ -120,7 +125,8 @@ private fun SupportedHealthConnectScreen(
     mappingError: String?,
     preview: ExercisePreviewState?,
     applyState: ExerciseApplyState?,
-    syncState: ExerciseSyncState?
+    syncState: ExerciseSyncState?,
+    lastSyncReceipt: ExerciseSyncReceipt?
 ) {
     var permissionDenied by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -152,6 +158,7 @@ private fun SupportedHealthConnectScreen(
         preview = preview,
         applyState = applyState,
         syncState = syncState,
+        lastSyncReceipt = lastSyncReceipt,
         onSync = viewModel::completeEligibleHabitsToday,
         onPreview = viewModel::previewToday,
         onApply = viewModel::applyPreview,
@@ -175,6 +182,7 @@ private fun HealthConnectContent(
     preview: ExercisePreviewState?,
     applyState: ExerciseApplyState?,
     syncState: ExerciseSyncState?,
+    lastSyncReceipt: ExerciseSyncReceipt?,
     onSync: () -> Unit,
     onPreview: (Int) -> Unit,
     onApply: (Int) -> Unit,
@@ -260,7 +268,8 @@ private fun HealthConnectContent(
             if (status == HealthConnectStatus.PermissionRequired || status == HealthConnectStatus.Ready) {
                 ExerciseMappingSettings(
                     habits, mappings, mappingError, preview, applyState, syncState,
-                    status == HealthConnectStatus.Ready, onPreview, onApply, onSync,
+                    lastSyncReceipt, status == HealthConnectStatus.Ready,
+                    onPreview, onApply, onSync,
                     saveMapping, removeMapping
                 )
             }
@@ -284,6 +293,7 @@ private fun ExerciseMappingSettings(
     preview: ExercisePreviewState?,
     applyState: ExerciseApplyState?,
     syncState: ExerciseSyncState?,
+    lastSyncReceipt: ExerciseSyncReceipt?,
     canPreview: Boolean,
     onPreview: (Int) -> Unit,
     onApply: (Int) -> Unit,
@@ -390,6 +400,24 @@ private fun ExerciseMappingSettings(
                 )
             is ExerciseSyncState.Error ->
                 Text(syncState.message, color = MaterialTheme.colorScheme.error)
+        }
+        if (lastSyncReceipt != null) {
+            val localTime = remember(lastSyncReceipt.finishedAtEpochMillis) {
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                    .withZone(ZoneId.systemDefault())
+                    .format(Instant.ofEpochMilli(lastSyncReceipt.finishedAtEpochMillis))
+            }
+            Text(
+                text = stringResource(
+                    R.string.health_connect_last_sync_receipt,
+                    localTime,
+                    lastSyncReceipt.applied,
+                    lastSyncReceipt.unchanged,
+                    lastSyncReceipt.failed
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         if (mappings.isNotEmpty()) {
             Text(

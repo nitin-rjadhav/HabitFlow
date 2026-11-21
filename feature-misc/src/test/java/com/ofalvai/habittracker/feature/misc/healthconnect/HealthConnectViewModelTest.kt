@@ -33,12 +33,15 @@ class HealthConnectViewModelTest {
     private val habitDao = mock<HabitDao>()
     private val reader = mock<HealthConnectExerciseReader>()
     private val autoCompletionDao = mock<ExerciseAutoCompletionDao>()
+    private val syncReceiptStore = mock<ExerciseSyncReceiptStore>()
 
     private fun viewModel(gateway: HealthConnectGateway = mock()): HealthConnectViewModel {
         given(autoCompletionDao.observeRecentHistory()).willReturn(flowOf(emptyList()))
         given(mappingDao.observeMappings()).willReturn(flowOf(emptyList()))
         given(habitDao.getActiveHabitsWithActions()).willReturn(flowOf(emptyList()))
-        return HealthConnectViewModel(gateway, habitDao, mappingDao, reader, autoCompletionDao)
+        return HealthConnectViewModel(
+            gateway, habitDao, mappingDao, reader, autoCompletionDao, syncReceiptStore
+        )
     }
 
     /** The ViewModel subscribes to completion history on creation, which is a safe read.
@@ -213,6 +216,11 @@ class HealthConnectViewModelTest {
         viewModel.completeEligibleHabitsToday()
         advanceUntilIdle()
         assertEquals(ExerciseSyncState.Finished(0, 0, 0), viewModel.syncState.value)
+        verify(syncReceiptStore).write(org.mockito.kotlin.check<ExerciseSyncReceipt> {
+            assertEquals(0, it.applied)
+            assertEquals(0, it.unchanged)
+            assertEquals(0, it.failed)
+        })
         verifyNoInteractions(reader)
         verifyNoCompletionWrites()
     }
@@ -271,6 +279,7 @@ class HealthConnectViewModelTest {
         viewModel.disconnect()
         advanceUntilIdle()
         verify(mappingDao).removeAllMappings()
+        verify(syncReceiptStore).clear()
         verifyNoInteractions(reader)
         org.mockito.kotlin.verify(autoCompletionDao, org.mockito.kotlin.never()).applyEligibleDay(
             org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any(),

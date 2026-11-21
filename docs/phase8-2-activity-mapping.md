@@ -59,6 +59,12 @@ This is a stacked draft based on Phase 8.1 PR #17 and must not be merged before 
 - A single-habit preview cannot be applied after the mapped local date changes, after 15 minutes, or if the device clock moves backwards. The user must preview again.
 - Additional deterministic tests verify the expiry window and an Asia/Kolkata midnight rollover.
 
+## Persistent last foreground sync receipt
+- A versioned SharedPreferences receipt stores **only** completion time and applied/unchanged/failed counts for the last *finished* explicitly initiated bulk sync. No exercise measurements, source IDs, health records or account details are persisted in it.
+- The Health Connect settings screen displays the last completed one-time sync with device-local time, including after app restart. Interrupted or permission-aborted syncs do not overwrite the last finished receipt.
+- Disconnect clears the last-sync receipt while keeping habit completions and the historical undo ledger. Round-trip and corrupt receipt tests protect startup.
+- Background sync remains disabled and the UI explicitly distinguishes this from any unattended synchronization.
+
 ## Remaining before 8.2 completion
 1. Validate the Room 6→7 migration and exported schema on CI, then decide if mappings should be included in versioned CSV backup (currently intentionally omitted).
 2. Extend explicit read-only preview into an opt-in transactional sync coordinator only after testing the reader with a fake client. No automatic actions yet.
