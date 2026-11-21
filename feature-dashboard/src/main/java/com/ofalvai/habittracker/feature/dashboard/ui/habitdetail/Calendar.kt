@@ -89,7 +89,7 @@ private fun DayCell(
             .padding(4.dp)
             .then(todayModifier)
             .clip(CircleShape)
-            .clickable(enabled = !day.date.isAfter(today)) {
+            .clickable(enabled = day.position == DayPosition.MonthDate && !day.date.isAfter(today)) {
                 onDayClick(day.date, action.copy(toggled = !action.toggled))
             }
             .aspectRatio(1f)
