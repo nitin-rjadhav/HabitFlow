@@ -63,7 +63,8 @@ class HealthConnectExerciseReader @Inject constructor(
                     )
                 )
                 for (record in page.records) {
-                    val kind = exerciseKindForHealthConnect(record.exerciseType)
+                    // Ignore unrelated or unknown exercise types before building a non-null session.
+                    val kind = exerciseKindForHealthConnect(record.exerciseType) ?: continue
                     if (kind != mapping.exerciseKind.toExerciseKindOrNull()) continue
                     // No empty IDs, no invalid sessions and no data from outside the day.
                     if (record.metadata.id.isBlank() ||
