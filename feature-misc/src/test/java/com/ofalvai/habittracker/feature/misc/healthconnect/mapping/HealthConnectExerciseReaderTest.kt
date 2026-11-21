@@ -58,6 +58,22 @@ class HealthConnectExerciseReaderTest {
         assertNull("BIKING".toExerciseKindOrNull())
     }
 
+    @Test fun mappingKindParsingRejectsUnicodeLookalikesAndControlCharacters() {
+        // Persisted values must match the canonical enum exactly, not visually resemble it.
+        val invalidValues = listOf(
+            "WALKING\r",
+            "RUNNING\u0000",
+            "CYCLING\u00A0",
+            "\u200BRUNNING",
+            "WALK\u0130NG",
+            "CYCLING\u200D",
+            "RUNNING/CYCLING"
+        )
+        invalidValues.forEach { invalid ->
+            assertNull("Unexpectedly accepted mapping kind: ${invalid.toList()}", invalid.toExerciseKindOrNull())
+        }
+    }
+
     @Test fun unrelatedExercisesAreIgnored() {
         assertNull(exerciseKindForHealthConnect(ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_POOL))
         assertNull(exerciseKindForHealthConnect(-42))
