@@ -93,9 +93,9 @@ class HealthConnectExerciseReader @Inject constructor(
         } catch (revoked: SecurityException) {
             return ExerciseSessionReadResult.PermissionRequired
         } catch (error: Exception) {
-            return // Provider exception messages can contain record identifiers or other sensitive details.
+            // Provider exception messages can contain record identifiers or other sensitive details.
             // Never surface those details in the UI or persist them in a sync receipt.
-            ExerciseSessionReadResult.Failure(GENERIC_EXERCISE_READ_ERROR)
+            return ExerciseSessionReadResult.Failure(GENERIC_EXERCISE_READ_ERROR)
         }
     }
 }
