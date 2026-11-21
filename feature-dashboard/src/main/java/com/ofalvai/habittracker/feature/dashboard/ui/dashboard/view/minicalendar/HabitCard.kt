@@ -127,6 +127,8 @@ fun ActionCalendar(
     habitColor: Habit.Color
 ) {
     Column {
+        // The mini-calendar is a read-only history visualization; its dots
+        // should be announced by accessibility services, not as controls.
         (0 until Constants.Rows).forEach { rowIndex ->
             Row(modifier = Modifier.padding(vertical = Constants.DotPadding)) {
                 val row = actions.subList(
