@@ -28,6 +28,8 @@ sealed interface ExerciseSessionReadResult {
  * Not invoked during startup or mapping configuration; callers must explicitly
  * initiate a mapped date read, then apply matching rules before writing anything.
  */
+internal const val GENERIC_EXERCISE_READ_ERROR = "Unable to read exercise sessions. Try again or check Health Connect access."
+
 class HealthConnectExerciseReader @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gateway: HealthConnectGateway
@@ -91,7 +93,9 @@ class HealthConnectExerciseReader @Inject constructor(
         } catch (revoked: SecurityException) {
             return ExerciseSessionReadResult.PermissionRequired
         } catch (error: Exception) {
-            return ExerciseSessionReadResult.Failure(error.message ?: "Exercise session read failed")
+            return // Provider exception messages can contain record identifiers or other sensitive details.
+            // Never surface those details in the UI or persist them in a sync receipt.
+            ExerciseSessionReadResult.Failure(GENERIC_EXERCISE_READ_ERROR)
         }
     }
 }
