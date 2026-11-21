@@ -31,6 +31,12 @@ This is a stacked draft based on Phase 8.1 PR #17 and must not be merged before 
 - Permission revoke/error/unavailable paths are visible; new unit tests verify a denied/unmapped preview never requests health data.
 - Privacy disclosure moved above the mapping editor, and the emulator test scrolls to verify it on small screens rather than expecting it at the bottom of a long page.
 
+## Transactional automatic completion foundation
+- Room v8 adds a unique habit/local-day completion ledger linked to the Action row with **ON DELETE SET NULL**. Deleting a previously automatic completion keeps the ledger and prevents a retry from silently recreating it.
+- A single Room transaction validates that the exact mapping still exists, the habit is active, the duration threshold is met, and there is no manual completion. It then inserts one Action and source IDs plus the completion ledger atomically.
+- Duplicate sync attempts for the same habit/day are idempotent. Removing an exercise mapping leaves existing completions and suppression ledger untouched; deleting a habit or restoring a backup cascades/clears that data.
+- This DAO is **not yet called from the UI**; preview remains strictly read-only. Physical-device validation and explicit opt-in sync orchestration are required before enabling the write path.
+
 ## Remaining before 8.2 completion
 1. Validate the Room 6→7 migration and exported schema on CI, then decide if mappings should be included in versioned CSV backup (currently intentionally omitted).
 2. Extend explicit read-only preview into an opt-in transactional sync coordinator only after testing the reader with a fake client. No automatic actions yet.

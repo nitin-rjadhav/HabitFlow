@@ -57,6 +57,10 @@ object PersistenceModule {
 
     @Provides
     @Singleton
+    fun provideExerciseAutoCompletionDao(db: AppDatabase): ExerciseAutoCompletionDao = db.exerciseAutoCompletionDao()
+
+    @Provides
+    @Singleton
     fun provideSharedPreferences(app: Application): SharedPreferences =
         PreferenceManager.getDefaultSharedPreferences(app)
 }

@@ -23,13 +23,15 @@ import com.ofalvai.habittracker.core.database.entity.Action
 import com.ofalvai.habittracker.core.database.entity.Habit
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
 import com.ofalvai.habittracker.core.database.entity.ExerciseSourceRecordEntity
+import com.ofalvai.habittracker.core.database.entity.ExerciseAutoCompletionLedger
 
 @Database(
     entities = [
         Habit::class, Action::class,
-        ExerciseHabitMappingEntity::class, ExerciseSourceRecordEntity::class
+        ExerciseHabitMappingEntity::class, ExerciseSourceRecordEntity::class,
+        ExerciseAutoCompletionLedger::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(EntityTypeConverters::class)
@@ -37,5 +39,6 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun habitDao(): HabitDao
     abstract fun exerciseMappingDao(): ExerciseMappingDao
+    abstract fun exerciseAutoCompletionDao(): ExerciseAutoCompletionDao
 
 }
