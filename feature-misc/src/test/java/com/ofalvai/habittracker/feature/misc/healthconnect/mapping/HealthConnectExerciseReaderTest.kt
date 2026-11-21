@@ -42,6 +42,15 @@ class HealthConnectExerciseReaderTest {
         )
     }
 
+    @Test fun mappingKindParsingRejectsUnknownAndCaseMismatchedValues() {
+        assertEquals(ExerciseKind.WALKING, "WALKING".toExerciseKindOrNull())
+        assertEquals(ExerciseKind.RUNNING, "RUNNING".toExerciseKindOrNull())
+        assertEquals(ExerciseKind.CYCLING, "CYCLING".toExerciseKindOrNull())
+        assertNull("SWIMMING".toExerciseKindOrNull())
+        assertNull("running".toExerciseKindOrNull())
+        assertNull("".toExerciseKindOrNull())
+    }
+
     @Test fun unrelatedExercisesAreIgnored() {
         assertNull(exerciseKindForHealthConnect(ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_POOL))
         assertNull(exerciseKindForHealthConnect(-42))
