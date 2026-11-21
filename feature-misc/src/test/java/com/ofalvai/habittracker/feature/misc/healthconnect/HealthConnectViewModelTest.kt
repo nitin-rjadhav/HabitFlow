@@ -2,12 +2,19 @@ package com.ofalvai.habittracker.feature.misc.healthconnect
 
 import com.ofalvai.habittracker.core.database.ExerciseMappingDao
 import com.ofalvai.habittracker.core.database.ExerciseAutoCompletionDao
+import com.ofalvai.habittracker.core.database.ExerciseApplyResult
 import com.ofalvai.habittracker.core.database.HabitDao
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
+import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseKind
+import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseSession
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.HealthConnectExerciseReader
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseSessionReadResult
 import com.ofalvai.habittracker.core.testing.MainCoroutineRule
 import kotlinx.coroutines.flow.flowOf
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -165,6 +172,55 @@ class HealthConnectViewModelTest {
         viewModel.completeEligibleHabitsToday()
         advanceUntilIdle()
         assertEquals(ExerciseSyncState.Finished(0, 0, 0), viewModel.syncState.value)
+        verifyNoInteractions(reader)
+        verifyNoCompletionWrites()
+    }
+
+    @Test fun oneTimeSyncAppliesQualifyingMappedExerciseExactlyOnce() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val viewModel = viewModel(gateway)
+        val today = LocalDate.now(ZoneId.of("UTC"))
+        val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 30, "UTC")
+        val start = today.atTime(12, 0).atZone(ZoneId.of("UTC")).toInstant()
+        val session = ExerciseSession(
+            "session-1", ExerciseKind.RUNNING, start, start.plus(Duration.ofMinutes(35))
+        )
+        given(mappingDao.observeMappings()).willReturn(flowOf(listOf(mapping)))
+        given(reader.readMappedDay(mapping, today)).willReturn(
+            ExerciseSessionReadResult.Success(listOf(session))
+        )
+        given(autoCompletionDao.applyEligibleDay(
+            mapping, today, Duration.ofMinutes(35), setOf("session-1")
+        )).willReturn(ExerciseApplyResult.Applied(99))
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.completeEligibleHabitsToday()
+        advanceUntilIdle()
+
+        assertEquals(ExerciseSyncState.Finished(1, 0, 0), viewModel.syncState.value)
+        verify(autoCompletionDao).applyEligibleDay(
+            mapping, today, Duration.ofMinutes(35), setOf("session-1")
+        )
+    }
+
+    @Test fun oneTimeSyncRevokedPermissionNeverReadsOrWrites() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        given(gateway.hasExerciseReadPermission()).willReturn(false)
+        val viewModel = viewModel(gateway)
+        val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 30, "UTC")
+        given(mappingDao.observeMappings()).willReturn(flowOf(listOf(mapping)))
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.completeEligibleHabitsToday()
+        advanceUntilIdle()
+
+        assertEquals(HealthConnectStatus.PermissionRequired, viewModel.status.value)
+        assertEquals(ExerciseSyncState.PermissionRequired, viewModel.syncState.value)
         verifyNoInteractions(reader)
         verifyNoCompletionWrites()
     }
