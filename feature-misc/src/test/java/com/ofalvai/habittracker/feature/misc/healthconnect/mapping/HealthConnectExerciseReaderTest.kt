@@ -52,6 +52,8 @@ class HealthConnectExerciseReaderTest {
         assertNull(" RUNNING".toExerciseKindOrNull())
         assertNull("RUNNING ".toExerciseKindOrNull())
         assertNull("RUNNING\\n".toExerciseKindOrNull())
+        assertNull("RUNNING\n".toExerciseKindOrNull())
+        assertNull("\tRUNNING".toExerciseKindOrNull())
         assertNull("RUNNING_TREADMILL".toExerciseKindOrNull())
         assertNull("BIKING".toExerciseKindOrNull())
     }
