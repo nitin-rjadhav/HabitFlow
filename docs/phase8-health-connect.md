@@ -82,3 +82,6 @@ Phase 8.1 never reads health records. Phase 8.2 reads exercise sessions only on 
 
 ### 22 Nov CI repair checkpoint
 The `f51f7ea` permission-recheck edit accidentally committed literal `\\n` sequences inside Kotlin source, so both workflows on `c57b173` failed compiling `HealthConnectExerciseReader.kt` at line 100. Commit `0b46e1d` replaces the escaped text with actual newlines and retains the final permission recheck and generic privacy-safe error. CI for the repair is pending; do not interpret a green emulator build as physical-device permission-revocation validation.
+
+### 22 Nov pagination permission checkpoint
+Both Android build/unit and emulator smoke workflows passed on repair commit `c304c53` (runs 44942610621 and 44942610599). Commit `bd10a7f` now checks exercise read permission **before every subsequent Health Connect page request**, as well as after the final page. This avoids unnecessary provider reads when permission is revoked between pages; a concurrent revoke during an individual provider call is still handled by the SecurityException path. Commit `7f9e717` adds strict mapping-kind parsing regression tests. These commits require fresh CI and do not substitute for physical-device revoke testing. No unattended sync or health-data upload was introduced.
