@@ -37,7 +37,7 @@ class HealthConnectViewModelTest {
     /** The ViewModel subscribes to completion history on creation, which is a safe read.
      * Only automatic-completion writes must be absent when permission is missing.
      */
-    private fun verifyNoCompletionWrites() {
+    private suspend fun verifyNoCompletionWrites() {
         org.mockito.kotlin.verify(autoCompletionDao, org.mockito.kotlin.never()).applyEligibleDay(
             org.mockito.kotlin.any(), org.mockito.kotlin.any(),
             org.mockito.kotlin.any(), org.mockito.kotlin.any()
