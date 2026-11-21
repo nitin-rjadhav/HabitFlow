@@ -22,6 +22,8 @@ import android.preference.PreferenceManager
 import androidx.room.Room
 import com.ofalvai.habittracker.core.database.AppDatabase
 import com.ofalvai.habittracker.core.database.HabitDao
+import com.ofalvai.habittracker.core.database.ExerciseAutoCompletionDao
+import com.ofalvai.habittracker.core.database.ExerciseMappingDao
 import com.ofalvai.habittracker.core.database.PersistenceModule
 import dagger.Module
 import dagger.Provides
@@ -37,6 +39,7 @@ import javax.inject.Singleton
 internal object MainThreadPersistenceModule {
 
     @Provides
+    @Singleton
     fun provideDb(app: Application): AppDatabase {
         return Room.databaseBuilder(app, AppDatabase::class.java, "app-db")
             .allowMainThreadQueries()
@@ -46,6 +49,18 @@ internal object MainThreadPersistenceModule {
     @Provides
     @Singleton
     fun provideHabitDao(db: AppDatabase): HabitDao = db.habitDao()
+
+    // The test module replaces the entire production PersistenceModule.
+    // Keep every DAO binding provided here when new ViewModels depend on it.
+    @Provides
+    @Singleton
+    fun provideExerciseMappingDao(db: AppDatabase): ExerciseMappingDao =
+        db.exerciseMappingDao()
+
+    @Provides
+    @Singleton
+    fun provideExerciseAutoCompletionDao(db: AppDatabase): ExerciseAutoCompletionDao =
+        db.exerciseAutoCompletionDao()
 
     @Provides
     @Singleton

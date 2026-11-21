@@ -97,6 +97,7 @@ fun DashboardScreen(
     var configDialogOpen by remember { mutableStateOf(false) }
     val habits by viewModel.habitsWithActions.collectAsState(Result.Loading)
     val onboardingState by viewModel.onboardingState.collectAsState()
+    val exerciseActionIds by viewModel.exerciseActionIds.collectAsState(initial = emptySet())
 
     val snackbarCoroutineScope = rememberCoroutineScope()
     DisplaySnackbarEvents(viewModel.dashboardEvent, snackbarCoroutineScope, snackbarHostState)
@@ -124,6 +125,7 @@ fun DashboardScreen(
                 habits = (habits as Result.Success<ImmutableList<HabitWithActions>>).value,
                 config,
                 onboardingState,
+                exerciseActionIds,
                 navigateToAddHabit,
                 onConfigClick,
                 onActionToggle,
@@ -165,6 +167,7 @@ private fun LoadedDashboard(
     habits: ImmutableList<HabitWithActions>,
     config: DashboardConfig,
     onboardingState: OnboardingState?,
+    exerciseActionIds: Set<Int>,
     onAddHabitClick: () -> Unit,
     onConfigClick: () -> Unit,
     onActionToggle: (Action, Habit, Int) -> Unit,
@@ -193,17 +196,17 @@ private fun LoadedDashboard(
                 when (it) {
                     DashboardConfig.FiveDay -> {
                         FiveDayHabitList(
-                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove
+                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove, exerciseActionIds
                         )
                     }
                     DashboardConfig.MiniCalendar -> {
                         MiniCalendarHabitList(
-                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove
+                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove, exerciseActionIds
                         )
                     }
                     DashboardConfig.Compact -> {
                         CompactHabitList(
-                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove
+                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove, exerciseActionIds
                         )
                     }
                 }

@@ -72,6 +72,7 @@ import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.core.ui.theme.composeColor
 import com.ofalvai.habittracker.core.ui.theme.composeContainerColor
 import com.ofalvai.habittracker.core.ui.theme.composeOnContainerColor
+import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.ExerciseCompletionBadge
 import com.ofalvai.habittracker.feature.dashboard.R
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.satisfyingToggleable
 import kotlinx.collections.immutable.ImmutableList
@@ -89,7 +90,8 @@ fun HabitCard(
     onActionToggle: (Action, Habit, Int) -> Unit,
     onDetailClick: (HabitId) -> Unit,
     dragOffset: Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isExerciseCompletionToday: Boolean = false
 ) {
     val isDragging = dragOffset != 0f
     val backgroundColor = if (isDragging) {
@@ -114,6 +116,8 @@ fun HabitCard(
                 text = habit.name,
                 style = AppTextStyle.habitTitle
             )
+
+            if (isExerciseCompletionToday) ExerciseCompletionBadge()
 
             ActionHistoryLabel(totalActionCount, actionHistory)
 

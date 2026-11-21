@@ -18,7 +18,7 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 object Constants {
     const val MIN_SDK = 21
-    const val COMPILE_SDK = 35
+    const val COMPILE_SDK = 36
     const val TARGET_SDK = 35
     val javaToolchainVersion: JavaLanguageVersion = JavaLanguageVersion.of(17)
 
