@@ -29,8 +29,9 @@ Status: In progress on draft PR #17 (`feature/phase8-1-health-connect-foundation
 - [x] Unit/instrumented tests for timezone boundaries, duplicates, deletion, idempotence and manual precedence; full migration/backup compatibility and device tests still pending.
 
 ### 8.3 — UI integration
-- [ ] Distinguish manual vs automatic completions on the dashboard; a local exercise-only history is implemented in Settings.
-- [ ] Persist last-sync metadata and finish accessibility review. One-time sync now shows live running/applied/unchanged/error counts, but no background synchronization is enabled.
+- [x] Distinguish manual vs exercise-generated actions with provenance badges in all dashboard layouts and a local audit history in Settings. UI accuracy and TalkBack tests still require device validation.
+- [x] Persist last finished foreground sync metadata locally with timestamp and applied/unchanged/uncheckable counts; clears on mapping disconnect.
+- [ ] Finish full accessibility review. Mapping buttons now have habit-specific screen-reader descriptions, sync outcomes have polite live-region announcements, and mapped habit action buttons have a small-screen-safe layout (requires targeted TalkBack/device validation).
 - [x] Add manual refresh (existing Check again) and mapping disconnect controls, retaining previously applied Actions and local undo ledger while deleting mappings/source IDs. OS-level Health Connect permission must be revoked separately in Android settings.
 - [ ] Complete regression testing including no-Health-Connect installs. Emulator UI smoke now checks the new Settings completion history heading.
 
@@ -38,4 +39,4 @@ Status: In progress on draft PR #17 (`feature/phase8-1-health-connect-foundation
 - Phase 7.2 UI improvements including #16 Delete Habit.
 - Phase 7.3 full existing-feature manual regression.
 
-Phase 8.1 never reads health records. Phase 8.2 only reads on an explicit Preview tap after permission and writes a local completion on a separate Apply tap. Neither branch uploads health data or requests permission on launch. Phase 8.3 has local Settings history and mapping disconnect controls, but dashboard indicators, sync state, device testing and regression remain unfinished. Keep PRs unmerged pending authorization.
+Phase 8.1 never reads health records. Phase 8.2 reads exercise sessions only on a user-initiated Preview or one-time Sync after Health Connect permission and saved mappings; Apply is a separate explicit option after a qualifying preview. Neither branch uploads health data, requests permission on launch, or runs background synchronization. Phase 8.3 now provides Settings history, mapping disconnect, dashboard badges, and a persisted receipt for finished manual syncs. Android test module dependency wiring is under CI validation; physical-device permission, TalkBack and regression remain unfinished. Keep PRs unmerged pending authorization.

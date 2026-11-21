@@ -41,6 +41,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.PermissionController
@@ -383,23 +387,27 @@ private fun ExerciseMappingSettings(
                 enabled = syncState != ExerciseSyncState.Running
             ) { Text(stringResource(R.string.health_connect_sync_today)) }
         }
-        when (syncState) {
-            null -> Unit
-            ExerciseSyncState.Running ->
-                Text(stringResource(R.string.health_connect_sync_running))
-            ExerciseSyncState.PermissionRequired ->
-                Text(stringResource(R.string.health_connect_sync_permission))
-            is ExerciseSyncState.Finished ->
-                Text(
-                    stringResource(
-                        R.string.health_connect_sync_finished,
-                        syncState.applied,
-                        syncState.unchanged,
-                        syncState.failed
+        // Announce foreground sync completion or permission changes without
+        // requiring TalkBack users to navigate back to the status message.
+        Column(modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
+            when (syncState) {
+                null -> Unit
+                ExerciseSyncState.Running ->
+                    Text(stringResource(R.string.health_connect_sync_running))
+                ExerciseSyncState.PermissionRequired ->
+                    Text(stringResource(R.string.health_connect_sync_permission))
+                is ExerciseSyncState.Finished ->
+                    Text(
+                        stringResource(
+                            R.string.health_connect_sync_finished,
+                            syncState.applied,
+                            syncState.unchanged,
+                            syncState.failed
+                        )
                     )
-                )
-            is ExerciseSyncState.Error ->
-                Text(syncState.message, color = MaterialTheme.colorScheme.error)
+                is ExerciseSyncState.Error ->
+                    Text(syncState.message, color = MaterialTheme.colorScheme.error)
+            }
         }
         if (lastSyncReceipt != null) {
             val localTime = remember(lastSyncReceipt.finishedAtEpochMillis) {
@@ -427,24 +435,38 @@ private fun ExerciseMappingSettings(
             mappings.forEach { mapping ->
                 val habitName = habits.find { it.id == mapping.habitId }?.name
                     ?: stringResource(R.string.health_connect_mapping_unknown_habit, mapping.habitId)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                // Keep buttons on their own row so long translated habit
+                // names cannot shrink the accessible touch targets.
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(habitName)
-                        Text(
-                            "${mapping.exerciseKind} · ${mapping.minimumDurationMinutes} min",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    if (canPreview) {
-                        TextButton(onClick = { onPreview(mapping.habitId) }) {
-                            Text(stringResource(R.string.health_connect_preview_today))
+                    Text(habitName)
+                    Text(
+                        "${mapping.exerciseKind} · ${mapping.minimumDurationMinutes} min",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    val previewLabel = stringResource(
+                        R.string.health_connect_preview_habit_accessibility, habitName
+                    )
+                    val removeLabel = stringResource(
+                        R.string.health_connect_remove_habit_accessibility, habitName
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (canPreview) {
+                            TextButton(
+                                onClick = { onPreview(mapping.habitId) },
+                                modifier = Modifier.semantics { contentDescription = previewLabel }
+                            ) {
+                                Text(stringResource(R.string.health_connect_preview_today))
+                            }
                         }
-                    }
-                    TextButton(onClick = { onRemove(mapping.habitId) }) {
-                        Text(stringResource(R.string.health_connect_mapping_remove))
+                        TextButton(
+                            onClick = { onRemove(mapping.habitId) },
+                            modifier = Modifier.semantics { contentDescription = removeLabel }
+                        ) {
+                            Text(stringResource(R.string.health_connect_mapping_remove))
+                        }
                     }
                 }
             }

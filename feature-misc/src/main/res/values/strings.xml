@@ -39,6 +39,8 @@
     <string name="health_connect_mapping_save">Save mapping</string>
     <string name="health_connect_mapping_saved">Saved mappings</string>
     <string name="health_connect_mapping_remove">Remove</string>
+    <string name="health_connect_preview_habit_accessibility">Preview exercise activity for %1$s</string>
+    <string name="health_connect_remove_habit_accessibility">Remove exercise mapping for %1$s</string>
     <string name="health_connect_mapping_unknown_habit">Habit #%1$d</string>
     <string name="health_connect_mapping_before_permission">Save a habit mapping below before requesting Health Connect permission.</string>
     <string name="health_connect_kind_walking">Walk</string>
