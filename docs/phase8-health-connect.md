@@ -18,7 +18,7 @@ Status: In progress on draft PR #17 (`feature/phase8-1-health-connect-foundation
 - [x] Create injectable availability/permission gateway (8.1) and guarded read-only exercise reader (8.2).
 - [x] Build a Settings entry and opt-in setup screen with availability/permission/error states, single read-only exercise permission, and rationale activity.
 - [x] Add unit tests for availability, permission transitions and ViewModel error/refresh behavior.
-- [ ] Validate Android build and targeted emulator smoke tests on the latest PR #18 commit; PR #17 passed both. Physical-device permission grant/deny/revoke remains pending.
+- [x] Validate Android build and targeted emulator smoke tests on PR #18 commit `9ecba2c`; PR #17 also passed both. Newer commits require their own CI checks. Physical-device permission grant/deny/revoke remains pending.
 
 ### 8.2 — Mapping and automatic completion
 - [x] Let users select an existing habit and walking/running/cycling mapping.
@@ -39,4 +39,4 @@ Status: In progress on draft PR #17 (`feature/phase8-1-health-connect-foundation
 - Phase 7.2 UI improvements including #16 Delete Habit.
 - Phase 7.3 full existing-feature manual regression.
 
-Phase 8.1 never reads health records. Phase 8.2 reads exercise sessions only on a user-initiated Preview or one-time Sync after Health Connect permission and saved mappings; Apply is a separate explicit option after a qualifying preview. Neither branch uploads health data, requests permission on launch, or runs background synchronization. Phase 8.3 now provides Settings history, mapping disconnect, dashboard badges, and a persisted receipt for finished manual syncs. Android test module dependency wiring is under CI validation; physical-device permission, TalkBack and regression remain unfinished. Keep PRs unmerged pending authorization.
+Phase 8.1 never reads health records. Phase 8.2 reads exercise sessions only on a user-initiated Preview or one-time Sync after Health Connect permission and saved mappings; Apply is a separate explicit option after a qualifying preview. Neither branch uploads health data, requests permission on launch, or runs background synchronization. Phase 8.3 now provides Settings history, mapping disconnect, dashboard badges, and a persisted receipt for finished manual syncs. Android test module dependency wiring passed build/unit and emulator smoke on `9ecba2c`. Receipt boundary and malformed-counter regression tests were added in `c98f09b`; its CI is pending. Physical-device permission, TalkBack and regression remain unfinished. Keep PRs unmerged pending authorization.
