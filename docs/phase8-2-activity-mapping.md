@@ -14,9 +14,14 @@ This is a stacked draft based on Phase 8.1 PR #17 and must not be merged before 
 - Existing backup restoration deletes existing habits and therefore clears mapping/provenance rows before restoring; an export/import format for opt-in mappings is deferred until it can be versioned explicitly.
 - Instrumentation tests cover durable mapping lookup, source deduplication, and deletion cascades.
 
+## Mapping selection UI
+- Health Connect Settings now allows choosing an existing active habit, walking/running/cycling, and a 1–1440-minute threshold; saving/removing persists in Room.
+- Permission request is hidden until at least one explicit mapping is saved. This does not trigger automatic health reads or habit completions.
+- Mappings remain local; displayed UI warns that automatic completion is not yet enabled.
+
 ## Remaining before 8.2 completion
 1. Validate the Room 6→7 migration and exported schema on CI, then decide if mappings should be included in versioned CSV backup (currently intentionally omitted).
 2. Add Health Connect read gateway for the selected exercise sessions only after explicit user opt-in and existing permission, with pagination, revocation handling and SDK guard.
-3. Wire mapping selection UI, day-level sync coordinator and idempotent transactional automatic completion. Distinguish manual actions and never overwrite/delete them.
+3. Implement day-level sync coordinator and idempotent transactional automatic completion with manual-override controls. Mapping selection UI is implemented but requires UI tests.
 4. Add database tests: repeated sync, duplicate providers, timezone/DST, manual override, deletion, permission revoke, and restored backup.
 5. Complete CI and device tests, and verify privacy copy.
