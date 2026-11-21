@@ -105,9 +105,14 @@ fun Heatmap(viewModel: InsightsViewModel) {
     val completedHabitsAtDate by viewModel.heatmapCompletedHabitsAtDate.collectAsState()
     val comparison by viewModel.monthlyComparison.collectAsState()
 
-    val onMonthChange: (YearMonth) -> Unit = {
-        yearMonth = it
-        viewModel.fetchHeatmap(yearMonth)
+    val onMonthChange: (YearMonth) -> Unit = { requestedMonth ->
+        // The calendar reports its initially visible month and can report it
+        // again after recomposition. Re-fetching an unchanged month switches
+        // the heatmap back to Loading and makes its contents flicker.
+        if (requestedMonth != yearMonth) {
+            yearMonth = requestedMonth
+            viewModel.fetchHeatmap(requestedMonth)
+        }
     }
     val onLoadHabitsAt: (LocalDate) -> Unit = {
         viewModel.fetchCompletedHabitsAt(it)
