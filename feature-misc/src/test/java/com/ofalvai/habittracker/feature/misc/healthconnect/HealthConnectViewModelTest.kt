@@ -34,6 +34,16 @@ class HealthConnectViewModelTest {
         return HealthConnectViewModel(gateway, habitDao, mappingDao, reader, autoCompletionDao)
     }
 
+    /** The ViewModel subscribes to completion history on creation, which is a safe read.
+     * Only automatic-completion writes must be absent when permission is missing.
+     */
+    private fun verifyNoCompletionWrites() {
+        org.mockito.kotlin.verify(autoCompletionDao, org.mockito.kotlin.never()).applyEligibleDay(
+            org.mockito.kotlin.any(), org.mockito.kotlin.any(),
+            org.mockito.kotlin.any(), org.mockito.kotlin.any()
+        )
+    }
+
     @Test fun refreshLoadsPermissionStatus() = runTest {
         val gateway = mock<HealthConnectGateway>()
         given(gateway.status()).willReturn(HealthConnectStatus.PermissionRequired)
@@ -65,7 +75,8 @@ class HealthConnectViewModelTest {
         assertEquals(HealthConnectStatus.Error("Permission dialog failed"), viewModel.status.value)
         viewModel.applyPreview(42)
         advanceUntilIdle()
-        verifyNoInteractions(reader, autoCompletionDao)
+        verifyNoInteractions(reader)
+        verifyNoCompletionWrites()
     }
 
     @Test fun refreshInvalidatesPreviousPreviewBeforeCheckingPermissions() = runTest {
@@ -79,7 +90,8 @@ class HealthConnectViewModelTest {
         assertNull(viewModel.applyState.value)
         advanceUntilIdle()
         assertEquals(HealthConnectStatus.Ready, viewModel.status.value)
-        verifyNoInteractions(reader, autoCompletionDao)
+        verifyNoInteractions(reader)
+        verifyNoCompletionWrites()
     }
 
     @Test fun refreshClearsOldErrorsAndLoadsCurrentState() = runTest {
@@ -113,10 +125,11 @@ class HealthConnectViewModelTest {
         viewModel.previewToday(42)
         advanceUntilIdle()
         assertEquals(ExercisePreviewState.PermissionRequired, viewModel.preview.value)
-        verifyNoInteractions(reader, autoCompletionDao)
+        verifyNoInteractions(reader)
+        verifyNoCompletionWrites()
         viewModel.applyPreview(42)
         advanceUntilIdle()
-        verifyNoInteractions(autoCompletionDao)
+        verifyNoCompletionWrites()
     }
 
     @Test fun previewWithNoMappingNeverReadsHealthData() = runTest {
