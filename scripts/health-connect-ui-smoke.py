@@ -53,6 +53,19 @@ def locate(label, exact=True, attempts=12):
     raise RuntimeError(f"UI label not found after {attempts} attempts: {label}")
 
 
+def locate_scrolling(label, exact=False, max_swipes=5):
+    """Find real visible UI text; scroll rather than silently bypassing it."""
+    for swipe in range(max_swipes + 1):
+        current = nodes()
+        found = next((node for node in current if match(node, label, exact)), None)
+        if found is not None:
+            return found
+        if swipe < max_swipes:
+            adb("shell", "input", "swipe", "520", "1640", "520", "540", "370")
+            time.sleep(1)
+    raise RuntimeError(f"UI label not found after scrolling: {label}")
+
+
 def tap(label, exact=True):
     item = locate(label, exact=exact)
     bounds = BOUNDS.fullmatch(item.get("bounds", ""))
@@ -80,7 +93,7 @@ def main():
     tap("Settings")
     tap("Health Connect")
     locate("Optionally allow HabitFlow", exact=False)
-    locate("HabitFlow requests only exercise-session read access.", exact=False)
+    locate_scrolling("HabitFlow requests only exercise-session read access.", exact=False)
     screenshot("health-connect-settings.png")
     print("Health Connect Settings and privacy explanation visible", flush=True)
 

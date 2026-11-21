@@ -3,6 +3,8 @@ package com.ofalvai.habittracker.feature.misc.healthconnect
 import com.ofalvai.habittracker.core.database.ExerciseMappingDao
 import com.ofalvai.habittracker.core.database.HabitDao
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
+import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.HealthConnectExerciseReader
+import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseSessionReadResult
 import com.ofalvai.habittracker.core.testing.MainCoroutineRule
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -14,17 +16,19 @@ import org.junit.Test
 import org.mockito.kotlin.given
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 
 class HealthConnectViewModelTest {
     @get:Rule val mainCoroutineRule = MainCoroutineRule()
 
     private val mappingDao = mock<ExerciseMappingDao>()
     private val habitDao = mock<HabitDao>()
+    private val reader = mock<HealthConnectExerciseReader>()
 
     private fun viewModel(gateway: HealthConnectGateway = mock()): HealthConnectViewModel {
         given(mappingDao.observeMappings()).willReturn(flowOf(emptyList()))
         given(habitDao.getActiveHabitsWithActions()).willReturn(flowOf(emptyList()))
-        return HealthConnectViewModel(gateway, habitDao, mappingDao)
+        return HealthConnectViewModel(gateway, habitDao, mappingDao, reader)
     }
 
     @Test fun refreshLoadsPermissionStatus() = runTest {
@@ -72,6 +76,29 @@ class HealthConnectViewModelTest {
                 assertEquals(30, it.minimumDurationMinutes)
             }
         )
+    }
+
+    @Test fun previewWithoutPermissionNeverReadsHealthData() = runTest {
+        val viewModel = viewModel()
+        viewModel.previewToday(42)
+        advanceUntilIdle()
+        assertEquals(ExercisePreviewState.PermissionRequired, viewModel.preview.value)
+        verifyNoInteractions(reader)
+    }
+
+    @Test fun previewWithNoMappingNeverReadsHealthData() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        val viewModel = viewModel(gateway)
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.previewToday(42)
+        advanceUntilIdle()
+        assertEquals(
+            ExercisePreviewState.Failure("Mapping no longer exists"),
+            viewModel.preview.value
+        )
+        verifyNoInteractions(reader)
     }
 
     @Test fun removeMappingDeletesOnlyLocalSettings() = runTest {

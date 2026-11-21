@@ -44,6 +44,14 @@
     <string name="health_connect_kind_walking">Walk</string>
     <string name="health_connect_kind_running">Run</string>
     <string name="health_connect_kind_cycling">Cycle</string>
+    <string name="health_connect_preview_today">Preview today</string>
+    <string name="health_connect_preview_loading">Checking today’s exercise sessions…</string>
+    <string name="health_connect_preview_permission">Read permission is required to preview. No data was imported.</string>
+    <string name="health_connect_preview_unavailable">Health Connect is unavailable. Manual habit tracking still works.</string>
+    <string name="health_connect_preview_summary">Today: %1$d minutes across %2$d exercise records</string>
+    <string name="health_connect_preview_eligible">Meets the saved daily exercise threshold. This preview does not complete the habit.</string>
+    <string name="health_connect_preview_not_eligible">Below the saved daily exercise threshold. No habit was changed.</string>
+    <string name="health_connect_preview_manual">This habit already has a manual completion today. It will not be overwritten.</string>
     <string name="health_connect_privacy">HabitFlow requests only exercise-session read access. It does not write health records or upload your health information. You can revoke access in Health Connect settings at any time.</string>
     <string name="health_connect_error">Unable to check Health Connect: %1$s</string>
     <string name="health_connect_rationale_title">Why HabitFlow requests access</string>

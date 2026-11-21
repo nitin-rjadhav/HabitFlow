@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.ofalvai.habittracker.feature.misc.healthconnect.ExercisePreviewState
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
 import com.ofalvai.habittracker.core.database.entity.Habit
 import com.ofalvai.habittracker.core.ui.component.AppDefaultAppBar
@@ -72,10 +73,11 @@ fun HealthConnectScreen(
     val habits by viewModel.availableHabits.collectAsState(initial = emptyList())
     val mappings by viewModel.savedMappings.collectAsState(initial = emptyList())
     val mappingError by viewModel.mappingError.collectAsState()
+    val preview by viewModel.preview.collectAsState()
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         SupportedHealthConnectScreen(
-            viewModel, status, navigateBack, habits, mappings, mappingError
+            viewModel, status, navigateBack, habits, mappings, mappingError, preview
         )
     } else {
         HealthConnectContent(
@@ -87,6 +89,8 @@ fun HealthConnectScreen(
             habits = emptyList(),
             mappings = emptyList(),
             mappingError = null,
+            preview = null,
+            onPreview = {},
             saveMapping = { _, _, _ -> },
             removeMapping = {}
         )
@@ -100,7 +104,8 @@ private fun SupportedHealthConnectScreen(
     navigateBack: () -> Unit,
     habits: List<Habit>,
     mappings: List<ExerciseHabitMappingEntity>,
-    mappingError: String?
+    mappingError: String?,
+    preview: ExercisePreviewState?
 ) {
     var permissionDenied by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -128,6 +133,8 @@ private fun SupportedHealthConnectScreen(
         habits = habits,
         mappings = mappings,
         mappingError = mappingError,
+        preview = preview,
+        onPreview = viewModel::previewToday,
         saveMapping = viewModel::saveMapping,
         removeMapping = viewModel::removeMapping
     )
@@ -143,6 +150,8 @@ private fun HealthConnectContent(
     habits: List<Habit>,
     mappings: List<ExerciseHabitMappingEntity>,
     mappingError: String?,
+    preview: ExercisePreviewState?,
+    onPreview: (Int) -> Unit,
     saveMapping: (Int, String, Int) -> Unit,
     removeMapping: (Int) -> Unit
 ) {
@@ -213,16 +222,20 @@ private fun HealthConnectContent(
                 }
             }
 
-            if (status == HealthConnectStatus.PermissionRequired || status == HealthConnectStatus.Ready) {
-                ExerciseMappingSettings(habits, mappings, mappingError, saveMapping, removeMapping)
-            }
-
+            // Keep the privacy disclosure above the increasingly long mapping form.
             Text(
                 text = stringResource(R.string.health_connect_privacy),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            if (status == HealthConnectStatus.PermissionRequired || status == HealthConnectStatus.Ready) {
+                ExerciseMappingSettings(
+                    habits, mappings, mappingError, preview,
+                    status == HealthConnectStatus.Ready, onPreview, saveMapping, removeMapping
+                )
+            }
         }
     }
 }
@@ -233,6 +246,9 @@ private fun ExerciseMappingSettings(
     habits: List<Habit>,
     mappings: List<ExerciseHabitMappingEntity>,
     error: String?,
+    preview: ExercisePreviewState?,
+    canPreview: Boolean,
+    onPreview: (Int) -> Unit,
     onSave: (Int, String, Int) -> Unit,
     onRemove: (Int) -> Unit
 ) {
@@ -327,9 +343,43 @@ private fun ExerciseMappingSettings(
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
+                    if (canPreview) {
+                        TextButton(onClick = { onPreview(mapping.habitId) }) {
+                            Text(stringResource(R.string.health_connect_preview_today))
+                        }
+                    }
                     TextButton(onClick = { onRemove(mapping.habitId) }) {
                         Text(stringResource(R.string.health_connect_mapping_remove))
                     }
+                }
+            }
+        }
+        when (preview) {
+            null -> Unit
+            ExercisePreviewState.Loading ->
+                Text(stringResource(R.string.health_connect_preview_loading))
+            ExercisePreviewState.PermissionRequired ->
+                Text(stringResource(R.string.health_connect_preview_permission))
+            ExercisePreviewState.Unavailable ->
+                Text(stringResource(R.string.health_connect_preview_unavailable))
+            is ExercisePreviewState.Failure ->
+                Text(preview.message, color = MaterialTheme.colorScheme.error)
+            is ExercisePreviewState.Result -> {
+                Text(
+                    stringResource(
+                        R.string.health_connect_preview_summary,
+                        preview.minutes,
+                        preview.recordCount
+                    )
+                )
+                Text(
+                    stringResource(
+                        if (preview.eligible) R.string.health_connect_preview_eligible
+                        else R.string.health_connect_preview_not_eligible
+                    )
+                )
+                if (preview.manualAlreadyComplete) {
+                    Text(stringResource(R.string.health_connect_preview_manual))
                 }
             }
         }

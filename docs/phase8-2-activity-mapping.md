@@ -25,9 +25,15 @@ This is a stacked draft based on Phase 8.1 PR #17 and must not be merged before 
 - A day's query covers previous midnight to capture cross-midnight exercise. Matching clips records to exact local day.
 - Session matcher unions overlapping intervals to avoid double-counting the same workout from watch and phone, with regression tests.
 
+## User-triggered preview and UI navigation
+- Adds a **Preview today** action for a saved exercise mapping when Health Connect permission is ready. This is the first connected UI call to the read-only reader, and runs **only on explicit user click**.
+- Display of matching duration, record count, threshold eligibility, and existing manual completion is read-only; no Action or provenance rows are written.
+- Permission revoke/error/unavailable paths are visible; new unit tests verify a denied/unmapped preview never requests health data.
+- Privacy disclosure moved above the mapping editor, and the emulator test scrolls to verify it on small screens rather than expecting it at the bottom of a long page.
+
 ## Remaining before 8.2 completion
 1. Validate the Room 6→7 migration and exported schema on CI, then decide if mappings should be included in versioned CSV backup (currently intentionally omitted).
-2. Wire the new on-demand Health Connect read gateway to explicit user refresh/sync only after permission, with rate-limit and revocation handling, and exercise reads tested with a fake client.
+2. Extend explicit read-only preview into an opt-in transactional sync coordinator only after testing the reader with a fake client. No automatic actions yet.
 3. Implement day-level sync coordinator and idempotent transactional automatic completion with manual-override controls. Mapping selection UI is implemented but requires UI tests.
 4. Add database tests: repeated sync, duplicate providers, timezone/DST, manual override, deletion, permission revoke, and restored backup.
 5. Complete CI and device tests, and verify privacy copy.
