@@ -49,6 +49,11 @@ class HealthConnectExerciseReaderTest {
         assertNull("SWIMMING".toExerciseKindOrNull())
         assertNull("running".toExerciseKindOrNull())
         assertNull("".toExerciseKindOrNull())
+        assertNull(" RUNNING".toExerciseKindOrNull())
+        assertNull("RUNNING ".toExerciseKindOrNull())
+        assertNull("RUNNING\\n".toExerciseKindOrNull())
+        assertNull("RUNNING_TREADMILL".toExerciseKindOrNull())
+        assertNull("BIKING".toExerciseKindOrNull())
     }
 
     @Test fun unrelatedExercisesAreIgnored() {
