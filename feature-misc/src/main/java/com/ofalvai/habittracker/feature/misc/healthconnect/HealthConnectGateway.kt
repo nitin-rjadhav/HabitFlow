@@ -1,19 +1,31 @@
 package com.ofalvai.habittracker.feature.misc.healthconnect
 
 import android.content.Context
+import android.os.Build
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
 
 /**
- * Read-only Health Connect gateway. Never creates a client when the provider is unavailable.
- * Permission requests are initiated explicitly by the UI, not here.
+ * This gateway must not access Health Connect APIs on devices below API 26.
+ * The manifest explicitly overrides the SDK library's minSdk to retain
+ * HabitFlow's existing API 21 support, so runtime guards are mandatory.
  */
 class HealthConnectGateway(private val context: Context) {
-    val exerciseReadPermission: String =
-        HealthPermission.getReadPermission(ExerciseSessionRecord::class)
+    val exerciseReadPermission: String
+        get() {
+            check(isHealthConnectSdkSupported(Build.VERSION.SDK_INT)) {
+                "Health Connect SDK requires Android API 26 or higher"
+            }
+            return HealthPermission.getReadPermission(ExerciseSessionRecord::class)
+        }
 
-    fun sdkStatus(): Int = HealthConnectClient.getSdkStatus(context)
+    fun sdkStatus(): Int {
+        if (!isHealthConnectSdkSupported(Build.VERSION.SDK_INT)) {
+            return HealthConnectClient.SDK_UNAVAILABLE
+        }
+        return HealthConnectClient.getSdkStatus(context)
+    }
 
     fun isAvailable(): Boolean =
         sdkStatus() == HealthConnectClient.SDK_AVAILABLE
@@ -26,6 +38,9 @@ class HealthConnectGateway(private val context: Context) {
     }
 
     suspend fun status(): HealthConnectStatus {
+        if (!isHealthConnectSdkSupported(Build.VERSION.SDK_INT)) {
+            return HealthConnectStatus.Unavailable
+        }
         return try {
             when (sdkStatus()) {
                 HealthConnectClient.SDK_UNAVAILABLE ->
@@ -42,3 +57,7 @@ class HealthConnectGateway(private val context: Context) {
         }
     }
 }
+
+/** Pure check, also usable by UI to hide the setup action on older devices. */
+internal fun isHealthConnectSdkSupported(deviceSdk: Int): Boolean =
+    deviceSdk >= Build.VERSION_CODES.O
