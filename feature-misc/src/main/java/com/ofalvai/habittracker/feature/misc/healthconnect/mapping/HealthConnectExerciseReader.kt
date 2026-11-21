@@ -57,6 +57,11 @@ class HealthConnectExerciseReader @Inject constructor(
             val results = ArrayList<ExerciseSession>()
             var token: String? = null
             do {
+                // Recheck before each subsequent page, not just after the final page.
+                // If access is revoked mid-pagination, avoid another provider read.
+                if (token != null && !gateway.hasExerciseReadPermission()) {
+                    return ExerciseSessionReadResult.PermissionRequired
+                }
                 val page = client.readRecords(
                     ReadRecordsRequest(
                         recordType = ExerciseSessionRecord::class,
