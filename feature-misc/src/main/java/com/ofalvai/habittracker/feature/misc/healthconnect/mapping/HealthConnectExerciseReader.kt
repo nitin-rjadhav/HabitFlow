@@ -87,7 +87,12 @@ class HealthConnectExerciseReader @Inject constructor(
                 }
             } while (!token.isNullOrEmpty())
 
-            // Permission can be revoked while pages are being read. Never hand a stale\n            // successful result to the completion flow after the final page.\n            if (!gateway.hasExerciseReadPermission()) {\n                return ExerciseSessionReadResult.PermissionRequired\n            }\n            return ExerciseSessionReadResult.Success(results.distinctBy { it.providerRecordId })
+            // Permission can be revoked while pages are being read. Never hand a stale
+            // successful result to the completion flow after the final page.
+            if (!gateway.hasExerciseReadPermission()) {
+                return ExerciseSessionReadResult.PermissionRequired
+            }
+            return ExerciseSessionReadResult.Success(results.distinctBy { it.providerRecordId })
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (revoked: SecurityException) {
