@@ -53,6 +53,10 @@ object PersistenceModule {
 
     @Provides
     @Singleton
+    fun provideExerciseMappingDao(db: AppDatabase): ExerciseMappingDao = db.exerciseMappingDao()
+
+    @Provides
+    @Singleton
     fun provideSharedPreferences(app: Application): SharedPreferences =
         PreferenceManager.getDefaultSharedPreferences(app)
 }

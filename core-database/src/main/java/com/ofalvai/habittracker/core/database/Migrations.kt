@@ -63,10 +63,37 @@ internal val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+/**
+ * Phase 8.2: mapping settings and source-record provenance remain on-device.
+ * Both tables cascade on habit or mapping deletion; no existing actions are changed.
+ */
+internal val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `ExerciseHabitMapping` (" +
+                "`habit_id` INTEGER NOT NULL, " +
+                "`exercise_kind` TEXT NOT NULL, " +
+                "`minimum_duration_minutes` INTEGER NOT NULL, " +
+                "`zone_id` TEXT NOT NULL, " +
+                "PRIMARY KEY(`habit_id`), " +
+                "FOREIGN KEY(`habit_id`) REFERENCES `Habit`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `ExerciseSourceRecord` (" +
+                "`habit_id` INTEGER NOT NULL, " +
+                "`local_date` TEXT NOT NULL, " +
+                "`provider_record_id` TEXT NOT NULL, " +
+                "PRIMARY KEY(`habit_id`, `local_date`, `provider_record_id`), " +
+                "FOREIGN KEY(`habit_id`) REFERENCES `ExerciseHabitMapping`(`habit_id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+        )
+    }
+}
+
 internal val MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
     MIGRATION_3_4,
     MIGRATION_4_5,
     MIGRATION_5_6,
+    MIGRATION_6_7,
 )

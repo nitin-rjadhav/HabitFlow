@@ -21,17 +21,21 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.ofalvai.habittracker.core.database.entity.Action
 import com.ofalvai.habittracker.core.database.entity.Habit
+import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
+import com.ofalvai.habittracker.core.database.entity.ExerciseSourceRecordEntity
 
 @Database(
     entities = [
-        Habit::class, Action::class
+        Habit::class, Action::class,
+        ExerciseHabitMappingEntity::class, ExerciseSourceRecordEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(EntityTypeConverters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun habitDao(): HabitDao
+    abstract fun exerciseMappingDao(): ExerciseMappingDao
 
 }
