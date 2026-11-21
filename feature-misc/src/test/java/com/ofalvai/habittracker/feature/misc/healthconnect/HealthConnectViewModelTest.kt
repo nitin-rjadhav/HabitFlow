@@ -259,6 +259,7 @@ class HealthConnectViewModelTest {
         val gateway = mock<HealthConnectGateway>()
         given(gateway.status()).willReturn(HealthConnectStatus.Ready)
         given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val viewModel = viewModel(gateway)
         val today = LocalDate.now(ZoneId.of("UTC"))
         val runMapping = ExerciseHabitMappingEntity(41, "RUNNING", 30, "UTC")
         val walkMapping = ExerciseHabitMappingEntity(42, "WALKING", 30, "UTC")
@@ -290,7 +291,6 @@ class HealthConnectViewModelTest {
             runMapping, today, Duration.ofMinutes(35), setOf("run-record")
         )).willReturn(ExerciseApplyResult.Applied(99))
 
-        val viewModel = viewModel(gateway)
         viewModel.refresh()
         advanceUntilIdle()
         viewModel.completeEligibleHabitsToday()
@@ -323,6 +323,7 @@ class HealthConnectViewModelTest {
         val gateway = mock<HealthConnectGateway>()
         given(gateway.status()).willReturn(HealthConnectStatus.Ready)
         given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val viewModel = viewModel(gateway)
         val today = LocalDate.now(ZoneId.of("UTC"))
         val firstMapping = ExerciseHabitMappingEntity(41, "RUNNING", 20, "UTC")
         val secondMapping = ExerciseHabitMappingEntity(42, "WALKING", 20, "UTC")
@@ -332,7 +333,6 @@ class HealthConnectViewModelTest {
         given(reader.readMappedDay(firstMapping, today)).willReturn(
             ExerciseSessionReadResult.PermissionRequired
         )
-        val viewModel = viewModel(gateway)
         viewModel.refresh()
         advanceUntilIdle()
         viewModel.completeEligibleHabitsToday()
@@ -355,6 +355,7 @@ class HealthConnectViewModelTest {
         val gateway = mock<HealthConnectGateway>()
         given(gateway.status()).willReturn(HealthConnectStatus.Ready)
         given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val viewModel = viewModel(gateway)
         val today = LocalDate.now(ZoneId.of("UTC"))
         val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 20, "UTC")
         given(mappingDao.observeMappings()).willReturn(flowOf(listOf(mapping)))
@@ -370,7 +371,6 @@ class HealthConnectViewModelTest {
         given(autoCompletionDao.applyEligibleDay(
             mapping, today, Duration.ofMinutes(25), setOf("same-session")
         )).willReturn(ExerciseApplyResult.AlreadyProcessed)
-        val viewModel = viewModel(gateway)
         viewModel.refresh()
         advanceUntilIdle()
         viewModel.completeEligibleHabitsToday()
