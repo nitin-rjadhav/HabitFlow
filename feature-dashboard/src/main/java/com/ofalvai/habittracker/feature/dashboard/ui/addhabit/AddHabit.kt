@@ -65,7 +65,12 @@ fun AddHabitScreen(viewModel: AddHabitViewModel, navigateBack: () -> Unit) {
 
     val onSave: (Habit) -> Unit = { viewModel.addHabit(it) }
 
-    Column(Modifier.verticalScroll(rememberScrollState())) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+    ) {
         AddHabitAppBar(onBack = navigateBack)
         AddHabitForm(onSave)
     }
