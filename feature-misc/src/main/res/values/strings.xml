@@ -44,6 +44,10 @@
     <string name="health_connect_kind_walking">Walk</string>
     <string name="health_connect_kind_running">Run</string>
     <string name="health_connect_kind_cycling">Cycle</string>
+    <string name="health_connect_apply_completion">Apply completion to habit</string>
+    <string name="health_connect_apply_saving">Saving exercise-based completion…</string>
+    <string name="health_connect_apply_saved">Habit completed from exercise. If you undo this completion, future retries will not restore it.</string>
+    <string name="health_connect_apply_unchanged">This day has already been completed or previously undone. No changes made.</string>
     <string name="health_connect_preview_today">Preview today</string>
     <string name="health_connect_preview_loading">Checking today’s exercise sessions…</string>
     <string name="health_connect_preview_permission">Read permission is required to preview. No data was imported.</string>

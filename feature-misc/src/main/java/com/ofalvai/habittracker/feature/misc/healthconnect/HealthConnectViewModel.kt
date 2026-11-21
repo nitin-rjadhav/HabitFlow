@@ -3,6 +3,8 @@ package com.ofalvai.habittracker.feature.misc.healthconnect
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ofalvai.habittracker.core.database.ExerciseMappingDao
+import com.ofalvai.habittracker.core.database.ExerciseAutoCompletionDao
+import com.ofalvai.habittracker.core.database.ExerciseApplyResult
 import com.ofalvai.habittracker.core.database.HabitDao
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseHabitMapping
@@ -13,6 +15,7 @@ import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.toExerciseKin
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import java.time.LocalDate
+import java.time.Duration
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -37,12 +40,21 @@ sealed interface ExercisePreviewState {
 }
 
 
+sealed interface ExerciseApplyState {
+    data object Saving : ExerciseApplyState
+    data object Saved : ExerciseApplyState
+    data object Unchanged : ExerciseApplyState
+    data object PermissionRequired : ExerciseApplyState
+    data class Error(val message: String) : ExerciseApplyState
+}
+
 @HiltViewModel
 class HealthConnectViewModel @Inject constructor(
     private val gateway: HealthConnectGateway,
     private val habitDao: HabitDao,
     private val mappingDao: ExerciseMappingDao,
-    private val exerciseReader: HealthConnectExerciseReader
+    private val exerciseReader: HealthConnectExerciseReader,
+    private val autoCompletionDao: ExerciseAutoCompletionDao
 ) : ViewModel() {
     private val _status = MutableStateFlow<HealthConnectStatus?>(null)
     val status: StateFlow<HealthConnectStatus?> = _status
@@ -60,6 +72,25 @@ class HealthConnectViewModel @Inject constructor(
     val preview: StateFlow<ExercisePreviewState?> = _preview
     private var previewJob: Job? = null
 
+    private data class Candidate(
+        val mapping: ExerciseHabitMappingEntity,
+        val day: LocalDate,
+        val duration: Duration,
+        val ids: Set<String>
+    )
+    private var candidate: Candidate? = null
+    private var applyJob: Job? = null
+    private val _applyState = MutableStateFlow<ExerciseApplyState?>(null)
+    val applyState: StateFlow<ExerciseApplyState?> = _applyState
+
+    private fun clearPreview() {
+        previewJob?.cancel()
+        applyJob?.cancel()
+        candidate = null
+        _preview.value = null
+        _applyState.value = null
+    }
+
     val exerciseReadPermission: String
         get() = gateway.exerciseReadPermission
 
@@ -70,10 +101,7 @@ class HealthConnectViewModel @Inject constructor(
         refreshJob = viewModelScope.launch {
             val latest = gateway.status()
             _status.value = latest
-            if (latest != HealthConnectStatus.Ready) {
-                previewJob?.cancel()
-                _preview.value = null
-            }
+            if (latest != HealthConnectStatus.Ready) clearPreview()
         }
     }
 
@@ -87,7 +115,7 @@ class HealthConnectViewModel @Inject constructor(
      * Does not insert Actions, source provenance, or alter manual completions.
      */
     fun previewToday(habitId: Int) {
-        previewJob?.cancel()
+        clearPreview()
         if (_status.value != HealthConnectStatus.Ready) {
             _preview.value = ExercisePreviewState.PermissionRequired
             return
@@ -124,6 +152,9 @@ class HealthConnectViewModel @Inject constructor(
                             result.sessions, today, zone,
                             manualCompletionExists = false
                         )
+                        if (matching.eligible && !alreadyCompleted) {
+                            candidate = Candidate(saved, today, matching.totalDuration, matching.supportingRecordIds)
+                        }
                         _preview.value = ExercisePreviewState.Result(
                             habitId = habitId,
                             minutes = matching.totalDuration.toMinutes(),
@@ -143,6 +174,47 @@ class HealthConnectViewModel @Inject constructor(
         }
     }
 
+    /** Only the user's second explicit action can write a completion. */
+    fun applyPreview(habitId: Int) {
+        val pending = candidate
+        if (_status.value != HealthConnectStatus.Ready ||
+            pending == null || pending.mapping.habitId != habitId ||
+            _applyState.value == ExerciseApplyState.Saving
+        ) return
+        _applyState.value = ExerciseApplyState.Saving
+        applyJob = viewModelScope.launch {
+            try {
+                if (!gateway.hasExerciseReadPermission()) {
+                    candidate = null
+                    _applyState.value = ExerciseApplyState.PermissionRequired
+                    _status.value = HealthConnectStatus.PermissionRequired
+                    return@launch
+                }
+                _applyState.value = when (val result = autoCompletionDao.applyEligibleDay(
+                    pending.mapping, pending.day, pending.duration, pending.ids
+                )) {
+                    is ExerciseApplyResult.Applied -> ExerciseApplyState.Saved
+                    ExerciseApplyResult.AlreadyProcessed,
+                    ExerciseApplyResult.ExistingCompletion -> ExerciseApplyState.Unchanged
+                    else -> ExerciseApplyState.Error("Completion was not applied: $result")
+                }
+                candidate = null
+                _preview.value = null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: SecurityException) {
+                candidate = null
+                _applyState.value = ExerciseApplyState.PermissionRequired
+                _status.value = HealthConnectStatus.PermissionRequired
+            } catch (error: Exception) {
+                candidate = null
+                _applyState.value = ExerciseApplyState.Error(
+                    error.message ?: "Could not apply exercise completion"
+                )
+            }
+        }
+    }
+
     fun saveMapping(habitId: Int, exerciseKind: String, minimumMinutes: Int) {
         viewModelScope.launch {
             try {
@@ -153,8 +225,7 @@ class HealthConnectViewModel @Inject constructor(
                     zoneId = ZoneId.systemDefault().id
                 )
                 mappingDao.upsertMapping(mapping)
-                previewJob?.cancel()
-                _preview.value = null
+                clearPreview()
                 _mappingError.value = null
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -168,8 +239,7 @@ class HealthConnectViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 mappingDao.removeMapping(habitId)
-                previewJob?.cancel()
-                _preview.value = null
+                clearPreview()
                 _mappingError.value = null
             } catch (cancelled: CancellationException) {
                 throw cancelled

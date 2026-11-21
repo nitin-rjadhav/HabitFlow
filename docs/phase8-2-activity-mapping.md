@@ -37,9 +37,15 @@ This is a stacked draft based on Phase 8.1 PR #17 and must not be merged before 
 - Duplicate sync attempts for the same habit/day are idempotent. Removing an exercise mapping leaves existing completions and suppression ledger untouched; deleting a habit or restoring a backup cascades/clears that data.
 - This DAO is **not yet called from the UI**; preview remains strictly read-only. Physical-device validation and explicit opt-in sync orchestration are required before enabling the write path.
 
+## Explicit preview-to-completion flow
+- After a qualifying preview, the user may deliberately tap **Apply completion to habit**. A second Health Connect permission check runs before the v8 transactional Action/provenance write.
+- There are no background writes; the action requires a separate, explicit user tap after a preview.
+- Mapping changes, duplicate attempts, archived habits and manual completions are handled by the transactional ledger; revocation blocks writes.
+- A removed/modified mapping invalidates pending preview state.
+
 ## Remaining before 8.2 completion
 1. Validate the Room 6→7 migration and exported schema on CI, then decide if mappings should be included in versioned CSV backup (currently intentionally omitted).
 2. Extend explicit read-only preview into an opt-in transactional sync coordinator only after testing the reader with a fake client. No automatic actions yet.
-3. Implement day-level sync coordinator and idempotent transactional automatic completion with manual-override controls. Mapping selection UI is implemented but requires UI tests.
+3. Extend the explicit preview/confirmation workflow into opt-in automatic sync. The transactional database write and manual undo suppression exist, but background sync is not implemented.
 4. Add database tests: repeated sync, duplicate providers, timezone/DST, manual override, deletion, permission revoke, and restored backup.
 5. Complete CI and device tests, and verify privacy copy.

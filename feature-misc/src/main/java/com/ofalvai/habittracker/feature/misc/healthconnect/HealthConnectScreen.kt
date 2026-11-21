@@ -74,10 +74,11 @@ fun HealthConnectScreen(
     val mappings by viewModel.savedMappings.collectAsState(initial = emptyList())
     val mappingError by viewModel.mappingError.collectAsState()
     val preview by viewModel.preview.collectAsState()
+    val applyState by viewModel.applyState.collectAsState()
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         SupportedHealthConnectScreen(
-            viewModel, status, navigateBack, habits, mappings, mappingError, preview
+            viewModel, status, navigateBack, habits, mappings, mappingError, preview, applyState
         )
     } else {
         HealthConnectContent(
@@ -90,7 +91,9 @@ fun HealthConnectScreen(
             mappings = emptyList(),
             mappingError = null,
             preview = null,
+            applyState = null,
             onPreview = {},
+            onApply = {},
             saveMapping = { _, _, _ -> },
             removeMapping = {}
         )
@@ -105,7 +108,8 @@ private fun SupportedHealthConnectScreen(
     habits: List<Habit>,
     mappings: List<ExerciseHabitMappingEntity>,
     mappingError: String?,
-    preview: ExercisePreviewState?
+    preview: ExercisePreviewState?,
+    applyState: ExerciseApplyState?
 ) {
     var permissionDenied by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -134,7 +138,9 @@ private fun SupportedHealthConnectScreen(
         mappings = mappings,
         mappingError = mappingError,
         preview = preview,
+        applyState = applyState,
         onPreview = viewModel::previewToday,
+        onApply = viewModel::applyPreview,
         saveMapping = viewModel::saveMapping,
         removeMapping = viewModel::removeMapping
     )
@@ -151,7 +157,9 @@ private fun HealthConnectContent(
     mappings: List<ExerciseHabitMappingEntity>,
     mappingError: String?,
     preview: ExercisePreviewState?,
+    applyState: ExerciseApplyState?,
     onPreview: (Int) -> Unit,
+    onApply: (Int) -> Unit,
     saveMapping: (Int, String, Int) -> Unit,
     removeMapping: (Int) -> Unit
 ) {
@@ -232,8 +240,9 @@ private fun HealthConnectContent(
 
             if (status == HealthConnectStatus.PermissionRequired || status == HealthConnectStatus.Ready) {
                 ExerciseMappingSettings(
-                    habits, mappings, mappingError, preview,
-                    status == HealthConnectStatus.Ready, onPreview, saveMapping, removeMapping
+                    habits, mappings, mappingError, preview, applyState,
+                    status == HealthConnectStatus.Ready, onPreview, onApply,
+                    saveMapping, removeMapping
                 )
             }
         }
@@ -247,8 +256,10 @@ private fun ExerciseMappingSettings(
     mappings: List<ExerciseHabitMappingEntity>,
     error: String?,
     preview: ExercisePreviewState?,
+    applyState: ExerciseApplyState?,
     canPreview: Boolean,
     onPreview: (Int) -> Unit,
+    onApply: (Int) -> Unit,
     onSave: (Int, String, Int) -> Unit,
     onRemove: (Int) -> Unit
 ) {
@@ -381,7 +392,22 @@ private fun ExerciseMappingSettings(
                 if (preview.manualAlreadyComplete) {
                     Text(stringResource(R.string.health_connect_preview_manual))
                 }
+                if (canPreview && preview.eligible && !preview.manualAlreadyComplete &&
+                    applyState != ExerciseApplyState.Saving
+                ) {
+                    Button(onClick = { onApply(preview.habitId) }) {
+                        Text(stringResource(R.string.health_connect_apply_completion))
+                    }
+                }
             }
+        }
+        when (applyState) {
+            null -> Unit
+            ExerciseApplyState.Saving -> Text(stringResource(R.string.health_connect_apply_saving))
+            ExerciseApplyState.Saved -> Text(stringResource(R.string.health_connect_apply_saved))
+            ExerciseApplyState.Unchanged -> Text(stringResource(R.string.health_connect_apply_unchanged))
+            ExerciseApplyState.PermissionRequired -> Text(stringResource(R.string.health_connect_preview_permission))
+            is ExerciseApplyState.Error -> Text(applyState.message, color = MaterialTheme.colorScheme.error)
         }
         if (error != null) {
             Text(error, color = MaterialTheme.colorScheme.error)

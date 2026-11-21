@@ -1,6 +1,7 @@
 package com.ofalvai.habittracker.feature.misc.healthconnect
 
 import com.ofalvai.habittracker.core.database.ExerciseMappingDao
+import com.ofalvai.habittracker.core.database.ExerciseAutoCompletionDao
 import com.ofalvai.habittracker.core.database.HabitDao
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.HealthConnectExerciseReader
@@ -24,11 +25,12 @@ class HealthConnectViewModelTest {
     private val mappingDao = mock<ExerciseMappingDao>()
     private val habitDao = mock<HabitDao>()
     private val reader = mock<HealthConnectExerciseReader>()
+    private val autoCompletionDao = mock<ExerciseAutoCompletionDao>()
 
     private fun viewModel(gateway: HealthConnectGateway = mock()): HealthConnectViewModel {
         given(mappingDao.observeMappings()).willReturn(flowOf(emptyList()))
         given(habitDao.getActiveHabitsWithActions()).willReturn(flowOf(emptyList()))
-        return HealthConnectViewModel(gateway, habitDao, mappingDao, reader)
+        return HealthConnectViewModel(gateway, habitDao, mappingDao, reader, autoCompletionDao)
     }
 
     @Test fun refreshLoadsPermissionStatus() = runTest {
@@ -83,7 +85,10 @@ class HealthConnectViewModelTest {
         viewModel.previewToday(42)
         advanceUntilIdle()
         assertEquals(ExercisePreviewState.PermissionRequired, viewModel.preview.value)
-        verifyNoInteractions(reader)
+        verifyNoInteractions(reader, autoCompletionDao)
+        viewModel.applyPreview(42)
+        advanceUntilIdle()
+        verifyNoInteractions(autoCompletionDao)
     }
 
     @Test fun previewWithNoMappingNeverReadsHealthData() = runTest {
