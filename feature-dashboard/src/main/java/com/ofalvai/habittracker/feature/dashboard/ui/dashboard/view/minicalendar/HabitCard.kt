@@ -56,6 +56,7 @@ import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.model.Habit
 import com.ofalvai.habittracker.core.model.HabitId
 import com.ofalvai.habittracker.core.ui.semantics.habitActionSemantics
+import com.ofalvai.habittracker.core.ui.theme.AppDimensions
 import com.ofalvai.habittracker.core.ui.theme.AppTextStyle
 import com.ofalvai.habittracker.core.ui.theme.composeColor
 import com.ofalvai.habittracker.core.ui.theme.composeContainerColor
@@ -85,18 +86,18 @@ fun HabitCard(
         ),
         border = if (isDragging) BorderStroke(1.dp, habit.color.composeColor) else null,
         modifier = modifier
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = AppDimensions.spacingMd)
             .fillMaxWidth()
             .draggableCard(dragOffset),
     ) {
-        Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+        Column(modifier = Modifier.padding(AppDimensions.spacingMd).fillMaxWidth()) {
             Text(
                 text = habit.name,
                 style = AppTextStyle.habitTitle
             )
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = AppDimensions.spacingMd),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 val todayAction = actions.last()
@@ -167,7 +168,7 @@ fun ActionButton(
     Button(
         modifier = Modifier
             .animateContentSize()
-            .padding(end = 8.dp)
+            .padding(end = AppDimensions.spacingSm)
             .semantics { role = Role.Checkbox; stateDescription = stateLabel },
         onClick = { onActionToggle(!toggled) },
         colors = ButtonDefaults.buttonColors(
