@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -41,11 +42,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,6 +60,7 @@ import com.ofalvai.habittracker.core.model.Habit
 import com.ofalvai.habittracker.core.model.HabitId
 import com.ofalvai.habittracker.core.ui.component.HorizontalGrid
 import com.ofalvai.habittracker.core.ui.semantics.habitActionSemantics
+import com.ofalvai.habittracker.core.ui.theme.AppDimensions
 import com.ofalvai.habittracker.core.ui.theme.AppTextStyle
 import com.ofalvai.habittracker.core.ui.theme.CoreIcons
 import com.ofalvai.habittracker.core.ui.theme.LocalAppColors
@@ -77,32 +81,43 @@ fun HabitItem(
     dragOffset: Float,
     modifier: Modifier = Modifier
 ) {
+    val detailsLabel = "${stringResource(R.string.dashboard_item_details)}: ${habit.name}"
+
     Column(
         modifier
             .fillMaxWidth()
             .draggableCard(dragOffset)
             .background(MaterialTheme.colorScheme.background)
-            .clickable(onClick = { onDetailClick(habit.id) })
-            .padding(top = 4.dp)
+            .clickable(
+                role = Role.Button,
+                onClickLabel = detailsLabel,
+                onClick = { onDetailClick(habit.id) }
+            )
+            .padding(top = AppDimensions.spacingXs)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = AppDimensions.minTouchTarget),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 modifier = Modifier
-                    .padding(start = 16.dp)
+                    .padding(start = AppDimensions.spacingMd, end = AppDimensions.spacingSm)
+                    .weight(1f)
                     .align(Alignment.CenterVertically),
                 text = habit.name,
-                style = AppTextStyle.habitTitleSmall
+                style = AppTextStyle.habitTitleSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
             IconButton(
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(AppDimensions.minTouchTarget),
                 onClick = { onDetailClick(habit.id) }
             ) {
                 Icon(
                     CoreIcons.ChevronRight,
-                    contentDescription = stringResource(R.string.dashboard_item_details)
+                    contentDescription = detailsLabel
                 )
             }
         }
@@ -146,7 +161,7 @@ fun ActionSquares(
             Text(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = AppDimensions.spacingMd),
                 text = stringResource(R.string.dashboard_toggle_help),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center
@@ -203,7 +218,7 @@ fun PreviewHabitItem() {
     )
     val habit2 = Habit(
         id = 2,
-        name = "Workout",
+        name = "Evening workout and mindful stretching routine",
         color = Habit.Color.Green,
         notes = ""
     )
@@ -224,9 +239,9 @@ fun PreviewHabitItem() {
     }
 
     PreviewTheme {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(AppDimensions.spacingMd)) {
             HabitItem(habit1, actions1.toImmutableList(), { _, _, _ -> }, {}, 0f)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(AppDimensions.spacingMd))
             HabitItem(habit2, actions2.toImmutableList(), { _, _, _ -> }, {}, 0f)
         }
     }

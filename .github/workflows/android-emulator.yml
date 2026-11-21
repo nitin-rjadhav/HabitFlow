@@ -54,8 +54,9 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          cores: 2
-          ram-size: 2048M
+          # Avoid repeated Pixel Launcher ANRs on cold boot under constrained memory.
+          cores: 4
+          ram-size: 3072M
           heap-size: 512M
           disk-size: 4096M
           disable-animations: true

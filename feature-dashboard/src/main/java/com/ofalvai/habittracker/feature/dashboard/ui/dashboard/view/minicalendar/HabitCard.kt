@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +42,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -52,6 +57,7 @@ import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.model.Habit
 import com.ofalvai.habittracker.core.model.HabitId
 import com.ofalvai.habittracker.core.ui.semantics.habitActionSemantics
+import com.ofalvai.habittracker.core.ui.theme.AppDimensions
 import com.ofalvai.habittracker.core.ui.theme.AppTextStyle
 import com.ofalvai.habittracker.core.ui.theme.composeColor
 import com.ofalvai.habittracker.core.ui.theme.composeContainerColor
@@ -81,18 +87,18 @@ fun HabitCard(
         ),
         border = if (isDragging) BorderStroke(1.dp, habit.color.composeColor) else null,
         modifier = modifier
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = AppDimensions.spacingMd)
             .fillMaxWidth()
             .draggableCard(dragOffset),
     ) {
-        Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+        Column(modifier = Modifier.padding(AppDimensions.spacingMd).fillMaxWidth()) {
             Text(
                 text = habit.name,
                 style = AppTextStyle.habitTitle
             )
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = AppDimensions.spacingMd),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 val todayAction = actions.last()
@@ -121,6 +127,8 @@ fun ActionCalendar(
     habitColor: Habit.Color
 ) {
     Column {
+        // The mini-calendar is a read-only history visualization; its dots
+        // should be announced by accessibility services, not as controls.
         (0 until Constants.Rows).forEach { rowIndex ->
             Row(modifier = Modifier.padding(vertical = Constants.DotPadding)) {
                 val row = actions.subList(
@@ -156,8 +164,16 @@ fun ActionButton(
     toggled: Boolean,
     onActionToggle: (Boolean) -> Unit
 ) {
+    val stateLabel = stringResource(
+        if (toggled) R.string.dashboard_toggle_label_toggled
+        else R.string.dashboard_toggle_label_untoggled
+    )
     Button(
-        modifier = Modifier.animateContentSize().padding(end = 8.dp),
+        modifier = Modifier
+            .animateContentSize()
+            .padding(end = AppDimensions.spacingSm)
+            .heightIn(min = AppDimensions.minTouchTarget)
+            .semantics { role = Role.Checkbox; stateDescription = stateLabel },
         onClick = { onActionToggle(!toggled) },
         colors = ButtonDefaults.buttonColors(
             containerColor = color.composeColor

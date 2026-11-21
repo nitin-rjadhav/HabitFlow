@@ -51,6 +51,7 @@ import com.ofalvai.habittracker.core.ui.component.AppDefaultAppBar
 import com.ofalvai.habittracker.core.ui.component.HabitColorPicker
 import com.ofalvai.habittracker.core.ui.component.TextFieldError
 import com.ofalvai.habittracker.core.ui.state.asEffect
+import com.ofalvai.habittracker.core.ui.theme.AppDimensions
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.core.ui.theme.composeColor
 import com.ofalvai.habittracker.feature.dashboard.R
@@ -64,7 +65,12 @@ fun AddHabitScreen(viewModel: AddHabitViewModel, navigateBack: () -> Unit) {
 
     val onSave: (Habit) -> Unit = { viewModel.addHabit(it) }
 
-    Column(Modifier.verticalScroll(rememberScrollState())) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+    ) {
         AddHabitAppBar(onBack = navigateBack)
         AddHabitForm(onSave)
     }
@@ -78,17 +84,17 @@ fun AddHabitForm(
     var name by rememberSaveable { mutableStateOf("") }
     var notes by rememberSaveable { mutableStateOf("") }
     var color by rememberSaveable { mutableStateOf(Habit.DEFAULT_COLOR) }
-    var isNameValid by remember { mutableStateOf(true) }
+    var isNameValid by rememberSaveable { mutableStateOf(true) }
 
     val onSaveClick: () -> Unit = {
-        if (name.isEmpty()) {
+        if (name.isBlank()) {
             isNameValid = false
         } else {
-            val habit = Habit(0, name, color, notes)
+            val habit = Habit(0, name.trim(), color, notes.trim())
             onSave(habit)
         }
     }
-    Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+    Column(Modifier.fillMaxWidth().padding(bottom = AppDimensions.spacingLg)) {
         val nameFocusRequester = remember { FocusRequester() }
         DisposableEffect(Unit) {
             // Using a DisposableEffect with Unit as key to only run the effect once, not in every
@@ -109,8 +115,9 @@ fun AddHabitForm(
                 .padding(horizontal = 32.dp, vertical = 16.dp)
                 .fillMaxWidth(),
             value = name,
-            onValueChange = { name = it },
+            onValueChange = { name = it; if (it.isNotBlank()) isNameValid = true },
             label = { Text(stringResource(R.string.addhabit_name_label)) },
+            isError = !isNameValid,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
@@ -128,6 +135,7 @@ fun AddHabitForm(
 
         Suggestions(habits = Suggestions.habits, onSelect = {
             name = it
+            isNameValid = true
             nameFocusRequester.requestFocus()
         })
 
@@ -136,9 +144,11 @@ fun AddHabitForm(
             value = notes,
             onValueChange = { notes = it },
             label = { Text(stringResource(R.string.addhabit_notes_label)) },
+            minLines = 3,
+            maxLines = 5,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
-                imeAction = ImeAction.None
+                imeAction = ImeAction.Done
             ),
             colors = customTextFieldColors
         )
@@ -152,7 +162,10 @@ fun AddHabitForm(
         HabitColorPicker(color = color, onColorPick = { color = it })
 
         Button(
-            modifier = Modifier.padding(top = 8.dp, start = 32.dp, end = 32.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = AppDimensions.spacingMd, start = AppDimensions.spacingXl, end = AppDimensions.spacingXl)
+                .heightIn(min = 48.dp),
             onClick = onSaveClick,
             colors = ButtonDefaults.buttonColors(containerColor = selectedHabitColor)
         ) {
@@ -173,6 +186,7 @@ private fun Suggestions(habits: ImmutableList<String>, onSelect: (String) -> Uni
     ) {
         items(habits) {
             SuggestionChip(
+                modifier = Modifier.heightIn(min = AppDimensions.minTouchTarget),
                 onClick = { onSelect(it) },
                 label = { Text(it) }
             )

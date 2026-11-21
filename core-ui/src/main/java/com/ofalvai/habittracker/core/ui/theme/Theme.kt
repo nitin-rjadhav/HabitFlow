@@ -172,7 +172,7 @@ fun AppTheme(
         shapes = shapes,
         typography = typography
     ) {
-        val appColors = if (isSystemInDarkTheme()) DarkAppColors else LightAppColors
+        val appColors = if (isDarkTheme) DarkAppColors else LightAppColors
         CompositionLocalProvider(LocalAppColors provides appColors) {
             content()
         }

@@ -26,15 +26,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -50,6 +55,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
@@ -58,7 +68,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.Dialog
 import com.airbnb.android.showkase.annotation.ShowkaseComposable
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
@@ -69,6 +79,7 @@ import com.ofalvai.habittracker.core.ui.component.ErrorView
 import com.ofalvai.habittracker.core.ui.component.HorizontalMonthCalendar
 import com.ofalvai.habittracker.core.ui.recomposition.StableHolder
 import com.ofalvai.habittracker.core.ui.state.Result
+import com.ofalvai.habittracker.core.ui.theme.AppDimensions
 import com.ofalvai.habittracker.core.ui.theme.LocalAppColors
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.feature.insights.R
@@ -84,6 +95,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 fun Heatmap(viewModel: InsightsViewModel) {
@@ -172,7 +184,7 @@ fun Heatmap(
 private fun MonthlySummaryRow(month: HeatmapMonth) {
     val summary = month.toMonthlySummary()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = AppDimensions.spacingMd),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         SummaryMetric(
@@ -193,7 +205,7 @@ private fun MonthlySummaryRow(month: HeatmapMonth) {
 @Composable
 private fun ActivityTrendsRow(month: HeatmapMonth) {
     val trends = month.toActivityTrends()
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = AppDimensions.spacingSm)) {
         Text(
             text = stringResource(
                 R.string.insights_activity_streaks,
@@ -230,10 +242,19 @@ private fun MonthlyComparisonLabel(comparison: MonthlyComparison) {
 }
 
 @Composable
-private fun SummaryMetric(label: String, value: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun androidx.compose.foundation.layout.RowScope.SummaryMetric(label: String, value: Int) {
+    Column(
+        modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {
+            contentDescription = "$label: $value"
+        },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Text(text = value.toString(), style = MaterialTheme.typography.titleLarge)
-        Text(text = label, style = MaterialTheme.typography.labelSmall)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -245,19 +266,21 @@ private fun HeatmapCalendar(
     onLoadHabitsAt: (LocalDate) -> Unit,
     onMonthSwipe: (YearMonth) -> Unit
 ) {
-    var showPopup by remember { mutableStateOf(false) }
+    var selectedDate by remember(yearMonth.item) { mutableStateOf<LocalDate?>(null) }
     val onDayClick: (LocalDate) -> Unit = {
+        selectedDate = it
         onLoadHabitsAt(it)
-        showPopup = true
     }
 
-    if (showPopup && completedHabitsAtDate != null) {
-        DayPopup(completedHabitsAtDate, onDismiss = { showPopup = false })
+    selectedDate?.let { date ->
+        if (completedHabitsAtDate != null) {
+            DayPopup(date, completedHabitsAtDate, onDismiss = { selectedDate = null })
+        }
     }
 
     HorizontalMonthCalendar(yearMonth, onMonthSwipe) {
         val dayData = heatmapData.dayMap[it.date] ?: HeatmapMonth.BucketInfo(0, 0)
-        DayCell(it, dayData, heatmapData.bucketCount, onDayClick)
+        DayCell(it, dayData, heatmapData.bucketCount, selectedDate == it.date, onDayClick)
     }
 }
 
@@ -266,24 +289,30 @@ private fun DayCell(
     day: CalendarDay,
     bucketInfo: HeatmapMonth.BucketInfo,
     bucketCount: Int,
+    isSelected: Boolean,
     onDayClick: (LocalDate) -> Unit
 ) {
     val today = LocalDate.now()
+    val completionDescription = stringResource(R.string.insights_day_completion_count, bucketInfo.value)
     val color = MaterialTheme.colorScheme.tertiary
         .adjustToBucketIndex(bucketInfo.bucketIndex, bucketCount)
 
-    val todayModifier = if (today == day.date) {
-        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-    } else Modifier
+    val dayOutline = when {
+        isSelected -> Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
+        today == day.date -> Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+        else -> Modifier
+    }
     Box(
         modifier = Modifier
             .semantics(mergeDescendants = true) {
-                text = AnnotatedString(DateTimeFormatter.ofPattern("LL dd").format(day.date))
+                text = AnnotatedString(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).format(day.date))
+                stateDescription = completionDescription
+                selected = isSelected
             }
             .padding(4.dp)
-            .then(todayModifier)
+            .then(dayOutline)
             .clip(CircleShape)
-            .clickable { onDayClick(day.date) }
+            .clickable(role = Role.Button) { onDayClick(day.date) }
             .aspectRatio(1f)
             .background(color, shape = CircleShape),
         contentAlignment = Alignment.Center
@@ -299,37 +328,67 @@ private fun DayCell(
 
 @Composable
 private fun DayPopup(
+    date: LocalDate,
     habits: ImmutableList<Habit>,
     onDismiss: () -> Unit
 ) {
-    Popup(
-        alignment = Alignment.Center,
-        onDismissRequest = onDismiss,
-    ) {
+    Dialog(onDismissRequest = onDismiss) {
         val shape = MaterialTheme.shapes.small
         Box(
             Modifier
                 .shadow(4.dp, shape)
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(12.dp)
+                .padding(AppDimensions.spacingMd)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(0.5f)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.8f)
             ) {
+                Text(
+                    text = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Spacer(Modifier.height(AppDimensions.spacingSm))
                 Text(
                     text = LocalContext.current.resources.getQuantityString(
                         R.plurals.insights_heatmap_popup_action_count,
                         habits.size,
                         habits.size
                     ),
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.semantics { heading() }
                 )
-                Divider(Modifier.padding(bottom = 8.dp, top = 4.dp))
-                Text(
-                    text = habits.joinToString(separator = "\n") { it.name },
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Divider(Modifier.padding(bottom = AppDimensions.spacingSm, top = AppDimensions.spacingXs))
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    if (habits.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.insights_heatmap_no_completed_habits),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        habits.forEach { habit ->
+                            Text(
+                                text = habit.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(vertical = AppDimensions.spacingXs)
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(AppDimensions.spacingSm))
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text(stringResource(R.string.insights_heatmap_close_details))
+                }
             }
 
         }
@@ -357,8 +416,15 @@ private fun HeatmapLegend(
                 val backgroundColor = MaterialTheme.colorScheme.tertiary.adjustToBucketIndex(
                     bucketIndex, heatmapData.bucketCount
                 )
+                val bucketDescription = stringResource(
+                    R.string.insights_heatmap_legend_bucket,
+                    maxValue
+                )
                 Box(
-                    Modifier.background(backgroundColor).size(24.dp)
+                    Modifier
+                        .background(backgroundColor)
+                        .size(24.dp)
+                        .semantics { contentDescription = bucketDescription }
                 ) {
                     Text(
                         text = maxValue.toString(),

@@ -49,6 +49,17 @@ def find(text):
         raise RuntimeError("Cannot find UI label: " + text)
     return matches[0]
 
+def dismiss_launcher_anr(current_nodes):
+    """Dismiss a system launcher ANR if it obscures the app under test."""
+    if not any("Pixel Launcher isn\'t responding" in n.attrib.get("text", "") for n in current_nodes):
+        return False
+    close = next((n for n in current_nodes if n.attrib.get("resource-id") == "android:id/aerr_close"), None)
+    if close is None:
+        return False
+    tap(close)
+    report.append("INFO: dismissed unresponsive Pixel Launcher dialog")
+    return True
+
 def screenshot(name):
     data = adb("exec-out", "screencap", "-p", timeout=30)
     if not data.startswith(b"\x89PNG"):
@@ -56,11 +67,19 @@ def screenshot(name):
     (OUT / name).write_bytes(data)
 
 def assert_count(expected):
-    for _ in range(8):
-        if any(expected in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")) for n in nodes()):
+    last_nodes = []
+    # CI emulators can be slow to navigate back and refresh Room-backed totals.
+    for _ in range(20):
+        last_nodes = nodes()
+        if any(expected in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")) for n in last_nodes):
             report.append("PASS: " + expected)
             return
         time.sleep(1)
+    diagnostic = "\\n".join(str(n.attrib) for n in last_nodes)
+    (OUT / "progress-count-timeout-hierarchy.txt").write_text(diagnostic)
+    print("Progress assertion failed; current visible UI nodes:", flush=True)
+    for node in last_nodes[:80]:
+        print(node.attrib, flush=True)
     raise RuntimeError("Expected progress count not shown: " + expected)
 
 try:
@@ -74,14 +93,20 @@ try:
     # Poll the actual dashboard CTA rather than failing on a single early dump.
     for attempt in range(12):
         initial_nodes = nodes()
+        if dismiss_launcher_anr(initial_nodes):
+            time.sleep(2)
+            initial_nodes = nodes()
         (OUT / "progress-launch-hierarchy.txt").write_text(
-            "\\n".join(str(n.attrib) for n in initial_nodes)
+            "\n".join(str(n.attrib) for n in initial_nodes)
         )
         if any("create" in (n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")).lower()
                for n in initial_nodes):
             break
         time.sleep(3)
     else:
+        print("Dashboard readiness diagnostics (last UI hierarchy):", flush=True)
+        for node in initial_nodes[:60]:
+            print(node.attrib, flush=True)
         raise RuntimeError("Dashboard not ready after 36 seconds; inspect progress-launch-hierarchy.txt")
     time.sleep(2)
     screenshot("progress-empty.png")
@@ -109,8 +134,74 @@ try:
         raise RuntimeError("Habit form has no accessible name field")
     tap(fields[0])
     adb("shell", "input", "text", "Meditation")
-    tap(find("Create habit"))
+    # Dismiss the IME before tapping Save: it may intercept the first tap
+    # while the focused text field remains active.
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(1)
+    # Match the actual clickable Save control, not a similarly named heading
+    # or parent semantics node. Record the candidate hierarchy for CI triage.
+    save_nodes = nodes()
+    (OUT / "progress-before-save-hierarchy.txt").write_text(
+        "\\n".join(str(n.attrib) for n in save_nodes)
+    )
+    def save_candidates(current_nodes):
+        # UIAutomator reports the Compose Button as an unnamed clickable parent,
+        # while its "Create habit" Text child is non-clickable. Find the exact
+        # text node and the smallest clickable rectangle containing its center.
+        # This avoids confusing the form title with the Save button.
+        labels = [
+            n for n in current_nodes
+            if n.attrib.get("text", "").strip().lower() == "create habit"
+            or n.attrib.get("content-desc", "").strip().lower() == "create habit"
+        ]
+        if len(labels) != 1:
+            return []
+        x, y = center(labels[0])
+        enclosing = []
+        for n in current_nodes:
+            if n.attrib.get("clickable") != "true":
+                continue
+            values = list(map(int, re.findall(r"\d+", n.attrib.get("bounds", ""))))
+            if len(values) == 4 and values[0] <= x <= values[2] and values[1] <= y <= values[3]:
+                area = (values[2] - values[0]) * (values[3] - values[1])
+                enclosing.append((area, n))
+        if not enclosing:
+            return []
+        smallest = min(area for area, _ in enclosing)
+        return [n for area, n in enclosing if area == smallest]
+
+    save_buttons = save_candidates(save_nodes)
+    # Scroll the actual form until the bottom action is exposed. A single swipe
+    # is insufficient on smaller emulator displays or with expanded notes.
+    for scroll_attempt in range(3):
+        if save_buttons:
+            break
+        adb("shell", "input", "swipe", "540", "1650", "540", "420", "450")
+        save_nodes = nodes()
+        (OUT / f"progress-after-scroll-{scroll_attempt + 1}-hierarchy.txt").write_text(
+            "\\n".join(str(n.attrib) for n in save_nodes)
+        )
+        save_buttons = save_candidates(save_nodes)
+    if len(save_buttons) != 1:
+        print("Save control not found; visible labels and clickability:", flush=True)
+        for node in save_nodes:
+            label = node.attrib.get("text", "") or node.attrib.get("content-desc", "")
+            if label or node.attrib.get("clickable") == "true":
+                print({"label": label, "clickable": node.attrib.get("clickable"),
+                       "bounds": node.attrib.get("bounds")}, flush=True)
+        raise RuntimeError(f"Expected one clickable Create habit button, found {len(save_buttons)}")
+    tap(save_buttons[0])
     time.sleep(4)
+    # A failed save must be diagnosed as a form-navigation problem, not
+    # misreported as a dashboard progress-count failure.
+    after_save = nodes()
+    # "Create new habit" is also the populated dashboard's add-another-habit CTA.
+    # Check for the editable form itself rather than matching that shared label.
+    if any(n.attrib.get("class") == "android.widget.EditText" for n in after_save):
+        (OUT / "progress-save-still-on-form.txt").write_text(
+            "\\n".join(str(n.attrib) for n in after_save)
+        )
+        raise RuntimeError("Create Habit form remained open after Save tap")
     assert_count("0 of 1 completed")
     screenshot("progress-zero-of-one.png")
     # Android exposes each daily action with a relative date and toggle state.

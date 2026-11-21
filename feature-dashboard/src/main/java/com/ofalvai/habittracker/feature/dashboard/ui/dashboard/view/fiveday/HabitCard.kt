@@ -65,6 +65,7 @@ import com.ofalvai.habittracker.core.model.ActionHistory
 import com.ofalvai.habittracker.core.model.Habit
 import com.ofalvai.habittracker.core.model.HabitId
 import com.ofalvai.habittracker.core.ui.semantics.habitActionSemantics
+import com.ofalvai.habittracker.core.ui.theme.AppDimensions
 import com.ofalvai.habittracker.core.ui.theme.AppTextStyle
 import com.ofalvai.habittracker.core.ui.theme.LocalAppColors
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
@@ -104,11 +105,11 @@ fun HabitCard(
         ),
         border = if (isDragging) BorderStroke(1.dp, habit.color.composeColor) else null,
         modifier = modifier
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = AppDimensions.spacingMd)
             .fillMaxWidth()
             .draggableCard(dragOffset),
     ) {
-        Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+        Column(modifier = Modifier.padding(AppDimensions.spacingMd).fillMaxWidth()) {
             Text(
                 text = habit.name,
                 style = AppTextStyle.habitTitle
@@ -117,7 +118,7 @@ fun HabitCard(
             ActionHistoryLabel(totalActionCount, actionHistory)
 
             ActionCircles(
-                modifier = Modifier.align(Alignment.End).padding(top = 8.dp),
+                modifier = Modifier.align(Alignment.End).padding(top = AppDimensions.spacingSm),
                 actions = actions.takeLast(Constants.DayCount).toImmutableList(),
                 habitColor = habit.color,
                 onActionToggle = { action, dayIndex ->

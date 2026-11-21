@@ -19,11 +19,14 @@
     <string name="insights_more_info">More information</string>
     <string name="insights_heatmap_title">Heatmap</string>
     <string name="insights_heatmap_description">Heatmap shows you the number of habits performed each day. Darker days mean more completed habits on a given day. Tap on a day to see the actual number.</string>
+    <string name="insights_heatmap_legend_bucket">Up to %1$d completed habits</string>
     <string name="insights_heatmap_legend_label">Number of performed habits</string>
     <plurals name="insights_heatmap_popup_action_count">
         <item quantity="one">%d completed habit</item>
         <item quantity="other">%d completed habits</item>
     </plurals>
+    <string name="insights_heatmap_no_completed_habits">No habits completed on this day</string>
+    <string name="insights_heatmap_close_details">Close details</string>
     <string name="insights_heatmap_error">Failed to load heatmap</string>
     <string name="insights_heatmap_empty_label">Once you create habits and perform them, this calendar will show how successful each day was.</string>
     <string name="insights_tophabits_title">Top habits</string>
@@ -41,4 +44,5 @@
     <string name="insights_month_comparison">%1$s completions vs previous month (first %2$d days)</string>
     <string name="insights_activity_streaks">Longest active-day streak: %1$d · Ending streak: %2$d</string>
     <string name="insights_weekly_activity">Weekly completions (Mon–Sun): %1$s</string>
+    <string name="insights_day_completion_count">%1$d completions</string>
 </resources>
