@@ -32,7 +32,7 @@ Status: In progress on draft PR #17 (`feature/phase8-1-health-connect-foundation
 - [ ] Distinguish manual vs automatic completions on the dashboard; a local exercise-only history is implemented in Settings.
 - [ ] Show sync status, last sync, error handling, and accessible explanations.
 - [x] Add manual refresh (existing Check again) and mapping disconnect controls, retaining previously applied Actions and local undo ledger while deleting mappings/source IDs. OS-level Health Connect permission must be revoked separately in Android settings.
-- [ ] Complete regression testing including no-Health-Connect installs.
+- [ ] Complete regression testing including no-Health-Connect installs. Emulator UI smoke now checks the new Settings completion history heading.
 
 ## Explicitly deferred
 - Phase 7.2 UI improvements including #16 Delete Habit.

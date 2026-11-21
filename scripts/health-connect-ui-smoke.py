@@ -94,6 +94,7 @@ def main():
     tap("Health Connect")
     locate("Optionally allow HabitFlow", exact=False)
     locate_scrolling("HabitFlow requests only exercise-session read access.", exact=False)
+    locate_scrolling("Exercise completion history", exact=True)
     screenshot("health-connect-settings.png")
     print("Health Connect Settings and privacy explanation visible", flush=True)
 
