@@ -35,8 +35,45 @@ Status: In progress on draft PR #17 (`feature/phase8-1-health-connect-foundation
 - [x] Add manual refresh (existing Check again) and mapping disconnect controls, retaining previously applied Actions and local undo ledger while deleting mappings/source IDs. OS-level Health Connect permission must be revoked separately in Android settings.
 - [ ] Complete regression testing including no-Health-Connect installs. Emulator UI smoke now checks the new Settings completion history heading.
 
+## Phase 8 on-device acceptance checklist
+
+These tests require a **real Android device** with Health Connect and consented test
+data. Passing GitHub CI and a stock emulator does not verify Health Connect grant,
+deny, revoke, real provider records, or TalkBack speech.
+
+1. **No provider / API below 26:** Launch HabitFlow, create and manually complete
+   a habit, visit Settings → Health Connect, and confirm the unavailable/setup
+   message is clear. No permission prompt should appear on launch.
+2. **Permission denied:** Save a test walking/running/cycling mapping; request
+   read-only permission and deny it. Preview/Apply/sync must not read or create
+   completions. Manual tracking must still work.
+3. **Permission granted:** Grant only exercise-session read access; add synthetic
+   or explicitly consented sessions for a disposable test habit. Preview today
+   shows the correct local date, distinct source IDs and unioned duration.
+4. **Explicit completion:** Apply once, verify the dashboard's Health Connect
+   provenance label, repeat Apply and one-tap sync, and confirm exactly one
+   completion. Undo it and verify it is **not automatically reinserted**.
+5. **Revocation during use:** Revoke Health Connect access before and, where
+   possible, during an on-demand read. Check for a permission-needed result,
+   no crash, no further provider reads, and no fabricated successful sync receipt.
+6. **Disconnect and restart:** Remove mappings, close/reopen the app, and verify
+   previously completed habits and undo history remain, but saved mappings,
+   source IDs and last-sync receipt are cleared. Revoke permission separately
+   in Android Health Connect settings.
+7. **Accessibility:** With TalkBack and a large font/display size, navigate the
+   setup screen, mapping chooser, scoped Preview/Remove controls, permission
+   explanation, sync result announcements, and disconnect confirmation.
+8. **Database upgrade and backup:** Install an older build with a populated
+   v6 database, upgrade to the Phase 8 build and verify habits/actions are
+   preserved. Exercise mappings are intentionally not part of the old CSV
+   format; document the omission before release.
+
+Record device model, Android version, Health Connect provider version, test
+date, actual result and screenshot/log evidence for each item. Do not collect
+or share real user health records in CI artifacts.
+
 ## Explicitly deferred
 - Phase 7.2 UI improvements including #16 Delete Habit.
 - Phase 7.3 full existing-feature manual regression.
 
-Phase 8.1 never reads health records. Phase 8.2 reads exercise sessions only on a user-initiated Preview or one-time Sync after Health Connect permission and saved mappings; Apply is a separate explicit option after a qualifying preview. Neither branch uploads health data, requests permission on launch, or runs background synchronization. Phase 8.3 now provides Settings history, mapping disconnect, dashboard badges, and a persisted receipt for finished manual syncs. Android test module dependency wiring passed build/unit and emulator smoke on `9ecba2c`. Receipt boundary and malformed-counter regression tests were added in `c98f09b`; its CI is pending. Physical-device permission, TalkBack and regression remain unfinished. Keep PRs unmerged pending authorization.
+Phase 8.1 never reads health records. Phase 8.2 reads exercise sessions only on a user-initiated Preview or one-time Sync after Health Connect permission and saved mappings; Apply is a separate explicit option after a qualifying preview. Neither branch uploads health data, requests permission on launch, or runs background synchronization. Phase 8.3 now provides Settings history, mapping disconnect, dashboard badges, and a persisted receipt for finished manual syncs. Android test module dependency wiring passed build/unit and emulator smoke on `9ecba2c`. Receipt boundary and malformed-counter regression tests were added in `c98f09b` and verified green on `708befe`. Additional partial-failure, duplicate and revocation unit tests are pending CI. Physical-device permission, TalkBack and regression remain unfinished. Keep PRs unmerged pending authorization.

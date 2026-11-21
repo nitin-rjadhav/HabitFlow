@@ -255,6 +255,135 @@ class HealthConnectViewModelTest {
         )
     }
 
+    @Test fun oneTimeSyncCountsSuccessIneligibleAndReadFailureIndependently() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val today = LocalDate.now(ZoneId.of("UTC"))
+        val runMapping = ExerciseHabitMappingEntity(41, "RUNNING", 30, "UTC")
+        val walkMapping = ExerciseHabitMappingEntity(42, "WALKING", 30, "UTC")
+        val bikeMapping = ExerciseHabitMappingEntity(43, "CYCLING", 30, "UTC")
+        given(mappingDao.observeMappings()).willReturn(
+            flowOf(listOf(runMapping, walkMapping, bikeMapping))
+        )
+        val start = today.atTime(12, 0).atZone(ZoneId.of("UTC")).toInstant()
+        given(reader.readMappedDay(runMapping, today)).willReturn(
+            ExerciseSessionReadResult.Success(listOf(
+                ExerciseSession(
+                    "run-record", ExerciseKind.RUNNING,
+                    start, start.plus(Duration.ofMinutes(35))
+                )
+            ))
+        )
+        given(reader.readMappedDay(walkMapping, today)).willReturn(
+            ExerciseSessionReadResult.Success(listOf(
+                ExerciseSession(
+                    "short-walk", ExerciseKind.WALKING,
+                    start, start.plus(Duration.ofMinutes(10))
+                )
+            ))
+        )
+        given(reader.readMappedDay(bikeMapping, today)).willReturn(
+            ExerciseSessionReadResult.Failure("Provider temporarily unavailable")
+        )
+        given(autoCompletionDao.applyEligibleDay(
+            runMapping, today, Duration.ofMinutes(35), setOf("run-record")
+        )).willReturn(ExerciseApplyResult.Applied(99))
+
+        val viewModel = viewModel(gateway)
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.completeEligibleHabitsToday()
+        advanceUntilIdle()
+
+        assertEquals(ExerciseSyncState.Finished(1, 1, 1), viewModel.syncState.value)
+        verify(autoCompletionDao).applyEligibleDay(
+            runMapping, today, Duration.ofMinutes(35), setOf("run-record")
+        )
+        org.mockito.kotlin.verify(autoCompletionDao, org.mockito.kotlin.never())
+            .applyEligibleDay(
+                org.mockito.kotlin.eq(walkMapping),
+                org.mockito.kotlin.any(), org.mockito.kotlin.any(),
+                org.mockito.kotlin.any()
+            )
+        org.mockito.kotlin.verify(autoCompletionDao, org.mockito.kotlin.never())
+            .applyEligibleDay(
+                org.mockito.kotlin.eq(bikeMapping),
+                org.mockito.kotlin.any(), org.mockito.kotlin.any(),
+                org.mockito.kotlin.any()
+            )
+        verify(syncReceiptStore).write(org.mockito.kotlin.check<ExerciseSyncReceipt> {
+            assertEquals(1, it.applied)
+            assertEquals(1, it.unchanged)
+            assertEquals(1, it.failed)
+        })
+    }
+
+    @Test fun revocationDuringReadStopsRemainingMappingsAndDoesNotSaveReceipt() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val today = LocalDate.now(ZoneId.of("UTC"))
+        val firstMapping = ExerciseHabitMappingEntity(41, "RUNNING", 20, "UTC")
+        val secondMapping = ExerciseHabitMappingEntity(42, "WALKING", 20, "UTC")
+        given(mappingDao.observeMappings()).willReturn(
+            flowOf(listOf(firstMapping, secondMapping))
+        )
+        given(reader.readMappedDay(firstMapping, today)).willReturn(
+            ExerciseSessionReadResult.PermissionRequired
+        )
+        val viewModel = viewModel(gateway)
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.completeEligibleHabitsToday()
+        advanceUntilIdle()
+
+        assertEquals(HealthConnectStatus.PermissionRequired, viewModel.status.value)
+        assertEquals(ExerciseSyncState.PermissionRequired, viewModel.syncState.value)
+        verify(reader).readMappedDay(firstMapping, today)
+        org.mockito.kotlin.verify(reader, org.mockito.kotlin.never())
+            .readMappedDay(
+                org.mockito.kotlin.eq(secondMapping),
+                org.mockito.kotlin.any()
+            )
+        verifyNoCompletionWrites()
+        org.mockito.kotlin.verify(syncReceiptStore, org.mockito.kotlin.never())
+            .write(org.mockito.kotlin.any())
+    }
+
+    @Test fun alreadyProcessedDayIsReportedUnchangedNotReapplied() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val today = LocalDate.now(ZoneId.of("UTC"))
+        val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 20, "UTC")
+        given(mappingDao.observeMappings()).willReturn(flowOf(listOf(mapping)))
+        val start = today.atTime(12, 0).atZone(ZoneId.of("UTC")).toInstant()
+        given(reader.readMappedDay(mapping, today)).willReturn(
+            ExerciseSessionReadResult.Success(listOf(
+                ExerciseSession(
+                    "same-session", ExerciseKind.RUNNING,
+                    start, start.plus(Duration.ofMinutes(25))
+                )
+            ))
+        )
+        given(autoCompletionDao.applyEligibleDay(
+            mapping, today, Duration.ofMinutes(25), setOf("same-session")
+        )).willReturn(ExerciseApplyResult.AlreadyProcessed)
+        val viewModel = viewModel(gateway)
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.completeEligibleHabitsToday()
+        advanceUntilIdle()
+
+        assertEquals(ExerciseSyncState.Finished(0, 1, 0), viewModel.syncState.value)
+        verify(syncReceiptStore).write(org.mockito.kotlin.check<ExerciseSyncReceipt> {
+            assertEquals(0, it.applied)
+            assertEquals(1, it.unchanged)
+            assertEquals(0, it.failed)
+        })
+    }
+
     @Test fun oneTimeSyncRevokedPermissionNeverReadsOrWrites() = runTest {
         val gateway = mock<HealthConnectGateway>()
         given(gateway.status()).willReturn(HealthConnectStatus.Ready)
