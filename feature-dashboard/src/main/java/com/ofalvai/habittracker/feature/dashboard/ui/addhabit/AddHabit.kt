@@ -186,6 +186,7 @@ private fun Suggestions(habits: ImmutableList<String>, onSelect: (String) -> Uni
     ) {
         items(habits) {
             SuggestionChip(
+                modifier = Modifier.heightIn(min = AppDimensions.minTouchTarget),
                 onClick = { onSelect(it) },
                 label = { Text(it) }
             )
