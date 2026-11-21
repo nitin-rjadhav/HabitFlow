@@ -54,6 +54,33 @@ class HealthConnectViewModelTest {
         )
     }
 
+    @Test fun permissionErrorClearsPreviewAndNeverWritesCompletion() = runTest {
+        val viewModel = viewModel()
+        viewModel.previewToday(42)
+        assertEquals(ExercisePreviewState.PermissionRequired, viewModel.preview.value)
+        viewModel.showError("Permission dialog failed")
+        assertNull(viewModel.preview.value)
+        assertNull(viewModel.applyState.value)
+        assertEquals(HealthConnectStatus.Error("Permission dialog failed"), viewModel.status.value)
+        viewModel.applyPreview(42)
+        advanceUntilIdle()
+        verifyNoInteractions(reader, autoCompletionDao)
+    }
+
+    @Test fun refreshInvalidatesPreviousPreviewBeforeCheckingPermissions() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        val viewModel = viewModel(gateway)
+        viewModel.previewToday(42)
+        assertEquals(ExercisePreviewState.PermissionRequired, viewModel.preview.value)
+        viewModel.refresh()
+        assertNull(viewModel.preview.value)
+        assertNull(viewModel.applyState.value)
+        advanceUntilIdle()
+        assertEquals(HealthConnectStatus.Ready, viewModel.status.value)
+        verifyNoInteractions(reader, autoCompletionDao)
+    }
+
     @Test fun refreshClearsOldErrorsAndLoadsCurrentState() = runTest {
         val gateway = mock<HealthConnectGateway>()
         given(gateway.status()).willReturn(HealthConnectStatus.Ready)

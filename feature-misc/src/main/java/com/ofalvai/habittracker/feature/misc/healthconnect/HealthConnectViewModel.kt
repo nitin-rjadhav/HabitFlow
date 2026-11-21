@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-/** Reads exercise only when the user taps Preview. Never writes habit completions. */
+/** Read-only preview state; applying a completion requires a second explicit action. */
 sealed interface ExercisePreviewState {
     data object Loading : ExercisePreviewState
     data object PermissionRequired : ExercisePreviewState
@@ -97,6 +97,9 @@ class HealthConnectViewModel @Inject constructor(
     fun refresh() {
         // Permission changes can race with an in-flight status check.
         refreshJob?.cancel()
+        // Invalidate any preview immediately; a pending permission check must
+        // never leave an Apply action usable with stale permission state.
+        clearPreview()
         _status.value = null
         refreshJob = viewModelScope.launch {
             val latest = gateway.status()
@@ -107,6 +110,7 @@ class HealthConnectViewModel @Inject constructor(
 
     fun showError(message: String) {
         refreshJob?.cancel()
+        clearPreview()
         _status.value = HealthConnectStatus.Error(message)
     }
 

@@ -1,6 +1,6 @@
 # Phase 8 — Health Connect integration
 
-Status: In progress on `feature/phase8-1-health-connect-foundation`. Phase 7.2 (Delete Habit, #16) and Phase 7.3 (full regression) are intentionally deferred, not cancelled.
+Status: In progress on draft PR #17 (`feature/phase8-1-health-connect-foundation`) and draft PR #18 (`feature/phase8-2-activity-mapping`). Both remain unmerged. Phase 7.2 (Delete Habit, #16) and Phase 7.3 (full regression) are intentionally deferred, not cancelled.
 
 ## Guardrails
 - Keep HabitFlow free, local-first, and functional without Health Connect.
@@ -15,17 +15,18 @@ Status: In progress on `feature/phase8-1-health-connect-foundation`. Phase 7.2 (
 ## Delivery sequence
 ### 8.1 — Foundation
 - [x] Add the AndroidX Health Connect client dependency and required manifest/package-visibility declarations, verified against supported SDK versions. Compile SDK 36, AGP 8.9.2, Gradle 8.11.1; runtime SDK gate keeps minSdk 21.
-- [ ] Create an injectable gateway for availability, permissions, and record reads (availability and permissions implemented; record reads deferred to 8.2).
+- [x] Create injectable availability/permission gateway (8.1) and guarded read-only exercise reader (8.2).
 - [x] Build a Settings entry and opt-in setup screen with availability/permission/error states, single read-only exercise permission, and rationale activity.
-- [ ] Add unit tests for availability and permission transitions.
-- [ ] Validate Android build, emulator smoke tests (including targeted Health Connect settings/rationale navigation), and supported-device behavior. Physical-device permission grant/deny/revoke remains pending.
+- [x] Add unit tests for availability, permission transitions and ViewModel error/refresh behavior.
+- [ ] Validate Android build and targeted emulator smoke tests on the latest PR #18 commit; PR #17 passed both. Physical-device permission grant/deny/revoke remains pending.
 
 ### 8.2 — Mapping and automatic completion
-- [ ] Let users select a habit and a supported activity type (initially walking/running/cycling).
-- [ ] Define explicit daily matching rules (date/time zone, duration threshold).
-- [ ] Persist mapping and source-record provenance locally.
-- [ ] Deduplicate imported records; support retries, revocation, and manual overrides.
-- [ ] Unit tests for timezone boundaries, duplicates, deletion, and re-sync.
+- [x] Let users select an existing habit and walking/running/cycling mapping.
+- [x] Define timezone/DST-aware day matching and daily duration threshold.
+- [x] Persist mapping, source provenance and completion ledger locally with Room migrations.
+- [x] Deduplicate records and overlap duration; preserve manual actions, tombstone user-deleted auto completions, and handle permission revocation in foreground reads.
+- [ ] Validate actual grant/deny/revoke flows on a physical device and finish fully automatic foreground sync (currently explicit Preview then Apply only).
+- [x] Unit/instrumented tests for timezone boundaries, duplicates, deletion, idempotence and manual precedence; full migration/backup compatibility and device tests still pending.
 
 ### 8.3 — UI integration
 - [ ] Distinguish manual vs automatic completions in dashboard and history.
@@ -37,4 +38,4 @@ Status: In progress on `feature/phase8-1-health-connect-foundation`. Phase 7.2 (
 - Phase 7.2 UI improvements including #16 Delete Habit.
 - Phase 7.3 full existing-feature manual regression.
 
-No exercise records are read, imported, synced, or mapped in 8.1. The permission request is initiated only after a user explicitly selects exercise-session access; no request occurs on launch. Full habit mapping and record access remain in 8.2.
+Phase 8.1 never reads health records. Phase 8.2 only reads on an explicit Preview tap after permission and writes a local completion on a separate Apply tap. Neither branch uploads health data or requests permission on launch. Phase 8.3 is not yet implemented. Keep PRs unmerged pending authorization.
