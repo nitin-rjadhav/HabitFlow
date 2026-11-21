@@ -83,11 +83,11 @@ class HealthConnectExerciseReader @Inject constructor(
                 }
                 token = page.pageToken
                 if (!token.isNullOrEmpty() && !seenTokens.add(token)) {
-                    return ExerciseSessionReadResult.Failure("Health Connect returned a repeated page token")
+                    return ExerciseSessionReadResult.Failure(GENERIC_EXERCISE_READ_ERROR)
                 }
             } while (!token.isNullOrEmpty())
 
-            return ExerciseSessionReadResult.Success(results.distinctBy { it.providerRecordId })
+            // Permission can be revoked while pages are being read. Never hand a stale\n            // successful result to the completion flow after the final page.\n            if (!gateway.hasExerciseReadPermission()) {\n                return ExerciseSessionReadResult.PermissionRequired\n            }\n            return ExerciseSessionReadResult.Success(results.distinctBy { it.providerRecordId })
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (revoked: SecurityException) {
