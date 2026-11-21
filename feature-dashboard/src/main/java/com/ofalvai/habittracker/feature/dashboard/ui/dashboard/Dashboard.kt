@@ -201,12 +201,12 @@ private fun LoadedDashboard(
                     }
                     DashboardConfig.MiniCalendar -> {
                         MiniCalendarHabitList(
-                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove
+                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove, exerciseActionIds
                         )
                     }
                     DashboardConfig.Compact -> {
                         CompactHabitList(
-                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove
+                            habits, onActionToggle, onHabitDetail, onAddHabitClick, onMove, exerciseActionIds
                         )
                     }
                 }
