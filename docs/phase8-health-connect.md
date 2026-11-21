@@ -14,9 +14,9 @@ Status: In progress on `feature/phase8-1-health-connect-foundation`. Phase 7.2 (
 
 ## Delivery sequence
 ### 8.1 — Foundation
-- [ ] Add the AndroidX Health Connect client dependency and required manifest/package-visibility declarations, verified against supported SDK versions.
-- [ ] Create an injectable gateway for availability, permissions, and record reads.
-- [ ] Build a Settings entry and opt-in setup screen with availability/permission/error states.
+- [x] Add the AndroidX Health Connect client dependency and required manifest/package-visibility declarations, verified against supported SDK versions. Compile SDK 36, AGP 8.9.2, Gradle 8.11.1; runtime SDK gate keeps minSdk 21.
+- [ ] Create an injectable gateway for availability, permissions, and record reads (availability and permissions implemented; record reads deferred to 8.2).
+- [x] Build a Settings entry and opt-in setup screen with availability/permission/error states, single read-only exercise permission, and rationale activity.
 - [ ] Add unit tests for availability and permission transitions.
 - [ ] Validate Android build, emulator smoke tests, and supported-device behavior.
 
@@ -37,4 +37,4 @@ Status: In progress on `feature/phase8-1-health-connect-foundation`. Phase 7.2 (
 - Phase 7.2 UI improvements including #16 Delete Habit.
 - Phase 7.3 full existing-feature manual regression.
 
-No Health Connect data access is implemented by this planning commit.
+No exercise records are read, imported, synced, or mapped in 8.1. The permission request is initiated only after a user explicitly selects exercise-session access; no request occurs on launch. Full habit mapping and record access remain in 8.2.

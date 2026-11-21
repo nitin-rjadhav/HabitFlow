@@ -1,6 +1,8 @@
 package com.ofalvai.habittracker.feature.misc.healthconnect
 
 import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import android.os.Build
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
@@ -11,7 +13,7 @@ import androidx.health.connect.client.records.ExerciseSessionRecord
  * The manifest explicitly overrides the SDK library's minSdk to retain
  * HabitFlow's existing API 21 support, so runtime guards are mandatory.
  */
-class HealthConnectGateway(private val context: Context) {
+class HealthConnectGateway @Inject constructor(@ApplicationContext private val context: Context) {
     val exerciseReadPermission: String
         get() {
             check(isHealthConnectSdkSupported(Build.VERSION.SDK_INT)) {

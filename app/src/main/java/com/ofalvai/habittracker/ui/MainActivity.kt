@@ -54,6 +54,7 @@ import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitDetailScre
 import com.ofalvai.habittracker.feature.insights.ui.InsightsScreen
 import com.ofalvai.habittracker.feature.misc.archive.ArchiveScreen
 import com.ofalvai.habittracker.feature.misc.export.ExportScreen
+import com.ofalvai.habittracker.feature.misc.healthconnect.HealthConnectScreen
 import com.ofalvai.habittracker.feature.misc.settings.LicensesScreen
 import com.ofalvai.habittracker.feature.misc.settings.SettingsScreen
 import com.ofalvai.habittracker.ui.settings.DebugSettings
@@ -164,8 +165,12 @@ private fun Screens(
                 hiltViewModel(),
                 navigateBack,
                 navigateToLicenses = { navController.navigate(Destination.Licenses.route) },
+                navigateToHealthConnect = { navController.navigate(Destination.HealthConnect) },
                 debugSettings = { DebugSettings() }
             )
+        }
+        appDestination(Destination.HealthConnect) {
+            HealthConnectScreen(hiltViewModel(), navigateBack)
         }
         appDestination(Destination.Licenses) {
             LicensesScreen(hiltViewModel(), navigateBack = { navController.popBackStack() })

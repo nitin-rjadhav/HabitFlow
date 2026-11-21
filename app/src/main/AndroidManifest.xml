@@ -20,6 +20,13 @@
     <!-- Health Connect is restricted to API 26+ at runtime. Preserve HabitFlow API 21 support. -->
     <uses-sdk tools:overrideLibrary="androidx.health.connect.client" />
 
+    <!-- Only exercise-session reads; no write or background health permissions. -->
+    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
+
     <application
         android:name=".HabitTrackerApplication"
         android:allowBackup="true"
@@ -28,6 +35,24 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/HabitTrackerTheme">
+        <!-- Explain read-only use when Health Connect requests the permission rationale. -->
+        <activity
+            android:name=".ui.HealthConnectRationaleActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity>
+        <activity-alias
+            android:name=".ui.ViewHealthConnectPermissionUsageActivity"
+            android:exported="true"
+            android:targetActivity=".ui.HealthConnectRationaleActivity"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
         <activity
             android:name=".ui.MainActivity"
             android:exported="true">
