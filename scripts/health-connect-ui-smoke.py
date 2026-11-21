@@ -15,7 +15,7 @@ from pathlib import Path
 PACKAGE = "com.nitinjadhav.habitflow.debug"
 OUT = Path("emulator-evidence")
 DUMP_PATH = "/sdcard/habitflow-healthconnect-window.xml"
-BOUNDS = re.compile(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]")
+BOUNDS = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 
 
 def adb(*args, timeout=40):
@@ -66,7 +66,7 @@ def tap(label, exact=True):
 
 def screenshot(path):
     img = adb("exec-out", "screencap", "-p", timeout=25)
-    if not img.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+    if not img.startswith(b"\x89PNG\r\n\x1a\n"):
         raise RuntimeError(f"Invalid PNG screenshot: {path}")
     (OUT / path).write_bytes(img)
 
