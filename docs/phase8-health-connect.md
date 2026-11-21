@@ -88,3 +88,6 @@ Both Android build/unit and emulator smoke workflows passed on repair commit `c3
 
 ### 22 Nov strict mapping-input and CI checkpoint
 Both Android cloud build/unit and emulator smoke workflows passed on `d8262e` (runs 44947706414 and 44947706393). Commit `2bf12d8` adds negative parsing tests for whitespace, embedded newline, and provider-specific exercise labels. Persisted mappings must use only canonical `WALKING`, `RUNNING`, or `CYCLING` values; treadmill/stationary variants are normalized only when reading provider records. The new test commit requires fresh CI verification. Physical-device grant/deny/revoke and TalkBack validation remain outstanding; do not merge either draft PR without authorization.
+
+### 22 Nov persisted mapping validation checkpoint
+Both Android build/unit and emulator workflows passed on `99e5648` (runs 44952585831 and 44952585855). Commit `8a116dc` now rejects unsupported or corrupted persisted exercise kinds before calling the Health Connect records API, avoiding unnecessary reads. Commit `9ab3fcc` extends mapping parsing regression coverage to real newline and tab control characters (rather than only a literal backslash-n sequence). These new commits need their own CI verification. Device grant/deny/revoke and TalkBack testing remain pending. Both PRs remain draft and unmerged.
