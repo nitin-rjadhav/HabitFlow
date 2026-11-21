@@ -78,11 +78,12 @@ fun HealthConnectScreen(
     val mappingError by viewModel.mappingError.collectAsState()
     val preview by viewModel.preview.collectAsState()
     val applyState by viewModel.applyState.collectAsState()
+    val syncState by viewModel.syncState.collectAsState()
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         SupportedHealthConnectScreen(
             viewModel, status, navigateBack, habits, mappings, completionHistory,
-            mappingError, preview, applyState
+            mappingError, preview, applyState, syncState
         )
     } else {
         HealthConnectContent(
@@ -97,6 +98,8 @@ fun HealthConnectScreen(
             mappingError = null,
             preview = null,
             applyState = null,
+            syncState = null,
+            onSync = {},
             onPreview = {},
             onApply = {},
             onDisconnect = {},
@@ -116,7 +119,8 @@ private fun SupportedHealthConnectScreen(
     completionHistory: List<ExerciseAutoCompletionLedger>,
     mappingError: String?,
     preview: ExercisePreviewState?,
-    applyState: ExerciseApplyState?
+    applyState: ExerciseApplyState?,
+    syncState: ExerciseSyncState?
 ) {
     var permissionDenied by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -147,6 +151,8 @@ private fun SupportedHealthConnectScreen(
         mappingError = mappingError,
         preview = preview,
         applyState = applyState,
+        syncState = syncState,
+        onSync = viewModel::completeEligibleHabitsToday,
         onPreview = viewModel::previewToday,
         onApply = viewModel::applyPreview,
         onDisconnect = viewModel::disconnect,
@@ -168,6 +174,8 @@ private fun HealthConnectContent(
     mappingError: String?,
     preview: ExercisePreviewState?,
     applyState: ExerciseApplyState?,
+    syncState: ExerciseSyncState?,
+    onSync: () -> Unit,
     onPreview: (Int) -> Unit,
     onApply: (Int) -> Unit,
     onDisconnect: () -> Unit,
@@ -251,8 +259,8 @@ private fun HealthConnectContent(
 
             if (status == HealthConnectStatus.PermissionRequired || status == HealthConnectStatus.Ready) {
                 ExerciseMappingSettings(
-                    habits, mappings, mappingError, preview, applyState,
-                    status == HealthConnectStatus.Ready, onPreview, onApply,
+                    habits, mappings, mappingError, preview, applyState, syncState,
+                    status == HealthConnectStatus.Ready, onPreview, onApply, onSync,
                     saveMapping, removeMapping
                 )
             }
@@ -275,9 +283,11 @@ private fun ExerciseMappingSettings(
     error: String?,
     preview: ExercisePreviewState?,
     applyState: ExerciseApplyState?,
+    syncState: ExerciseSyncState?,
     canPreview: Boolean,
     onPreview: (Int) -> Unit,
     onApply: (Int) -> Unit,
+    onSync: () -> Unit,
     onSave: (Int, String, Int) -> Unit,
     onRemove: (Int) -> Unit
 ) {
@@ -353,6 +363,34 @@ private fun ExerciseMappingSettings(
             ) { Text(stringResource(R.string.health_connect_mapping_save)) }
         }
 
+        if (mappings.isNotEmpty() && canPreview) {
+            Text(
+                stringResource(R.string.health_connect_sync_explanation),
+                style = MaterialTheme.typography.bodySmall
+            )
+            Button(
+                onClick = onSync,
+                enabled = syncState != ExerciseSyncState.Running
+            ) { Text(stringResource(R.string.health_connect_sync_today)) }
+        }
+        when (syncState) {
+            null -> Unit
+            ExerciseSyncState.Running ->
+                Text(stringResource(R.string.health_connect_sync_running))
+            ExerciseSyncState.PermissionRequired ->
+                Text(stringResource(R.string.health_connect_sync_permission))
+            is ExerciseSyncState.Finished ->
+                Text(
+                    stringResource(
+                        R.string.health_connect_sync_finished,
+                        syncState.applied,
+                        syncState.unchanged,
+                        syncState.failed
+                    )
+                )
+            is ExerciseSyncState.Error ->
+                Text(syncState.message, color = MaterialTheme.colorScheme.error)
+        }
         if (mappings.isNotEmpty()) {
             Text(
                 stringResource(R.string.health_connect_mapping_saved),

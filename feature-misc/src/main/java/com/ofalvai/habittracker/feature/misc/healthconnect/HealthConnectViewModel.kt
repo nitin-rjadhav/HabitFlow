@@ -23,6 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** Read-only preview state; applying a completion requires a second explicit action. */
@@ -40,6 +41,18 @@ sealed interface ExercisePreviewState {
     ) : ExercisePreviewState
 }
 
+
+/** A one-time, explicitly initiated foreground sync of today's mapped habits. */
+sealed interface ExerciseSyncState {
+    data object Running : ExerciseSyncState
+    data object PermissionRequired : ExerciseSyncState
+    data class Finished(
+        val applied: Int,
+        val unchanged: Int,
+        val failed: Int
+    ) : ExerciseSyncState
+    data class Error(val message: String) : ExerciseSyncState
+}
 
 sealed interface ExerciseApplyState {
     data object Saving : ExerciseApplyState
@@ -84,12 +97,17 @@ class HealthConnectViewModel @Inject constructor(
     )
     private var candidate: Candidate? = null
     private var applyJob: Job? = null
+    private var syncJob: Job? = null
+    private val _syncState = MutableStateFlow<ExerciseSyncState?>(null)
+    val syncState: StateFlow<ExerciseSyncState?> = _syncState
     private val _applyState = MutableStateFlow<ExerciseApplyState?>(null)
     val applyState: StateFlow<ExerciseApplyState?> = _applyState
 
     private fun clearPreview() {
         previewJob?.cancel()
         applyJob?.cancel()
+        syncJob?.cancel()
+        _syncState.value = null
         candidate = null
         _preview.value = null
         _applyState.value = null
@@ -218,6 +236,111 @@ class HealthConnectViewModel @Inject constructor(
                 candidate = null
                 _applyState.value = ExerciseApplyState.Error(
                     error.message ?: "Could not apply exercise completion"
+                )
+            }
+        }
+    }
+
+    /**
+     * One-time opt-in bulk sync. This is never called from onResume, startup
+     * or background work. The user taps the action after mapping and permission.
+     *
+     * Every successful local write goes through the transactional ledger:
+     * archived habits, manual completions, duplicates, and user-undone
+     * exercise completions are skipped rather than overwritten.
+     */
+    fun completeEligibleHabitsToday() {
+        clearPreview()
+        if (_status.value != HealthConnectStatus.Ready) {
+            _syncState.value = ExerciseSyncState.PermissionRequired
+            return
+        }
+        _syncState.value = ExerciseSyncState.Running
+        syncJob = viewModelScope.launch {
+            try {
+                val selectedMappings = mappingDao.observeMappings().first()
+                var applied = 0
+                var unchanged = 0
+                var failed = 0
+                for (mapping in selectedMappings) {
+                    // Re-check on every mapping in case Health Connect access is
+                    // revoked while the foreground operation is in progress.
+                    if (!gateway.hasExerciseReadPermission()) {
+                        _status.value = HealthConnectStatus.PermissionRequired
+                        _syncState.value = ExerciseSyncState.PermissionRequired
+                        return@launch
+                    }
+                    try {
+                        val kind = mapping.exerciseKind.toExerciseKindOrNull()
+                        if (kind == null) {
+                            failed++
+                            continue
+                        }
+                        val zone = ZoneId.of(mapping.zoneId)
+                        val today = LocalDate.now(zone)
+                        when (val read = exerciseReader.readMappedDay(mapping, today)) {
+                            ExerciseSessionReadResult.PermissionRequired -> {
+                                _status.value = HealthConnectStatus.PermissionRequired
+                                _syncState.value = ExerciseSyncState.PermissionRequired
+                                return@launch
+                            }
+                            ExerciseSessionReadResult.Unavailable,
+                            is ExerciseSessionReadResult.Failure -> {
+                                failed++
+                            }
+                            is ExerciseSessionReadResult.Success -> {
+                                val match = matchExerciseDay(
+                                    ExerciseHabitMapping(
+                                        mapping.habitId, kind, mapping.minimumDurationMinutes
+                                    ),
+                                    read.sessions, today, zone,
+                                    manualCompletionExists = false
+                                )
+                                if (!match.eligible) {
+                                    unchanged++
+                                    continue
+                                }
+                                // Do not apply records across local midnight.
+                                if (LocalDate.now(zone) != today) {
+                                    failed++
+                                    continue
+                                }
+                                if (!gateway.hasExerciseReadPermission()) {
+                                    _status.value = HealthConnectStatus.PermissionRequired
+                                    _syncState.value = ExerciseSyncState.PermissionRequired
+                                    return@launch
+                                }
+                                when (autoCompletionDao.applyEligibleDay(
+                                    mapping, today, match.totalDuration, match.supportingRecordIds
+                                )) {
+                                    is ExerciseApplyResult.Applied -> applied++
+                                    ExerciseApplyResult.AlreadyProcessed,
+                                    ExerciseApplyResult.ExistingCompletion,
+                                    ExerciseApplyResult.Ineligible,
+                                    ExerciseApplyResult.MappingChanged,
+                                    ExerciseApplyResult.MissingOrArchivedHabit -> unchanged++
+                                }
+                            }
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (revoked: SecurityException) {
+                        _status.value = HealthConnectStatus.PermissionRequired
+                        _syncState.value = ExerciseSyncState.PermissionRequired
+                        return@launch
+                    } catch (error: Exception) {
+                        failed++
+                    }
+                }
+                _syncState.value = ExerciseSyncState.Finished(applied, unchanged, failed)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (revoked: SecurityException) {
+                _status.value = HealthConnectStatus.PermissionRequired
+                _syncState.value = ExerciseSyncState.PermissionRequired
+            } catch (error: Exception) {
+                _syncState.value = ExerciseSyncState.Error(
+                    error.message ?: "Unable to complete today's mapped habits"
                 )
             }
         }

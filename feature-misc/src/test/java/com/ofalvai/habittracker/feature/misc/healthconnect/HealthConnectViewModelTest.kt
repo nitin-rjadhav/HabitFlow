@@ -147,6 +147,28 @@ class HealthConnectViewModelTest {
         verifyNoInteractions(reader)
     }
 
+    @Test fun oneTimeSyncWithoutPermissionDoesNotReadOrWrite() = runTest {
+        val viewModel = viewModel()
+        viewModel.completeEligibleHabitsToday()
+        advanceUntilIdle()
+        assertEquals(ExerciseSyncState.PermissionRequired, viewModel.syncState.value)
+        verifyNoInteractions(reader)
+        verifyNoCompletionWrites()
+    }
+
+    @Test fun oneTimeSyncWithNoSavedMappingsIsNoOp() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        val viewModel = viewModel(gateway)
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.completeEligibleHabitsToday()
+        advanceUntilIdle()
+        assertEquals(ExerciseSyncState.Finished(0, 0, 0), viewModel.syncState.value)
+        verifyNoInteractions(reader)
+        verifyNoCompletionWrites()
+    }
+
     @Test fun disconnectRemovesMappingsWithoutTouchingHabitActionsOrAutoHistory() = runTest {
         val viewModel = viewModel()
         viewModel.disconnect()

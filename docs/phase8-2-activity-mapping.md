@@ -49,9 +49,15 @@ This is a stacked draft based on Phase 8.1 PR #17 and must not be merged before 
 - Badge uses exact linked Action ID from the active ledger, not a timestamp heuristic. Deleting that Action nulls the ledger link and hides the badge while preserving the undo tombstone.
 - Added pure ID-matching tests and a reactive DAO/ViewModel flow test.
 
+## One-time mapped-habit sync (foreground)
+- **Complete eligible mapped habits today** processes each locally saved opt-in mapping only when the user taps the explicit action. Every mapping's Health Connect exercise read is permission-checked, timezone-clipped and overlap-deduplicated.
+- Eligible sessions are applied through the same Room transaction and undo tombstone; manual habit completions, duplicate runs, archived/deleted habits, and previously undone automatic completions remain untouched.
+- UI summarizes applied, unchanged and failed mapping counts. Permission revocation aborts further reads immediately. No background schedule or passive app-launch reads are enabled.
+- Unit tests cover no-permission and no-mapping paths that never read health data or write completions.
+
 ## Remaining before 8.2 completion
 1. Validate the Room 6→7 migration and exported schema on CI, then decide if mappings should be included in versioned CSV backup (currently intentionally omitted).
 2. Extend explicit read-only preview into an opt-in transactional sync coordinator only after testing the reader with a fake client. No automatic actions yet.
-3. Extend the explicit preview/confirmation workflow into opt-in automatic sync. The transactional database write and manual undo suppression exist, but background sync is not implemented.
+3. Decide on a separately consented automatic foreground refresh or Health Connect background access policy. A one-time foreground bulk sync now works via an explicit user tap; background sync is not implemented.
 4. Add database tests: repeated sync, duplicate providers, timezone/DST, manual override, deletion, permission revoke, and restored backup.
 5. Complete CI and device tests, and verify privacy copy.
