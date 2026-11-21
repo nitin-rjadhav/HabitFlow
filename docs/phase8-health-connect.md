@@ -7,6 +7,7 @@ Status: In progress on draft PR #17 (`feature/phase8-1-health-connect-foundation
 - Health Connect is opt-in. Do not request permissions on app launch.
 - Request only the read permissions needed for a user-selected habit/activity mapping.
 - Do not upload health records, use analytics on health values, or require an account.
+- Never log Room SQL bind arguments or exercise source-record identifiers to Logcat. Diagnostic builds must preserve on-device health privacy.
 - Treat availability, installed-provider status, permissions, and read failures as distinct states.
 - Manual habit completions always remain possible; never silently overwrite them.
 - Imported records must be idempotent (deduplicate by source record ID and mapping), and a revoked permission must not crash the app.

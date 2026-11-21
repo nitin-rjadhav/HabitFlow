@@ -20,12 +20,10 @@ import android.app.Application
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
 import androidx.room.Room
-import androidx.room.RoomDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import logcat.logcat
 import javax.inject.Singleton
 
 @Module
@@ -34,15 +32,10 @@ object PersistenceModule {
     @Provides
     @Singleton
     fun provideDb(app: Application): AppDatabase {
+        // Do not log SQL queries or bind arguments. They can contain user habit
+        // data and Health Connect exercise-source identifiers, which must not
+        // be written to Logcat even for normal debug builds.
         return Room.databaseBuilder(app, AppDatabase::class.java, "app-db")
-            .setQueryCallback(object : RoomDatabase.QueryCallback {
-                override fun onQuery(sqlQuery: String, bindArgs: List<Any?>) {
-                    logcat("RoomQueryLog") { "Query: $sqlQuery" }
-                    if (bindArgs.isNotEmpty()) {
-                        logcat("RoomQueryLog") { "Args: $bindArgs" }
-                    }
-                }
-            }, Runnable::run)
             .addMigrations(*MIGRATIONS)
             .build()
     }
