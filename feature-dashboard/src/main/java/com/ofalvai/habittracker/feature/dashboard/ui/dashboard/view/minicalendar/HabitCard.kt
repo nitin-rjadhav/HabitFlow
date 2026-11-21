@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -169,6 +170,7 @@ fun ActionButton(
         modifier = Modifier
             .animateContentSize()
             .padding(end = AppDimensions.spacingSm)
+            .heightIn(min = AppDimensions.minTouchTarget)
             .semantics { role = Role.Checkbox; stateDescription = stateLabel },
         onClick = { onActionToggle(!toggled) },
         colors = ButtonDefaults.buttonColors(
