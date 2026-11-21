@@ -46,6 +46,10 @@ class HealthConnectExerciseReader @Inject constructor(
                 return ExerciseSessionReadResult.PermissionRequired
             }
 
+            // Reject corrupted/legacy mapping kinds before requesting any provider records.
+            // A bad persisted value must never cause an unnecessary health-data read.
+            val selectedKind = mapping.exerciseKind.toExerciseKindOrNull()
+                ?: return ExerciseSessionReadResult.Failure(GENERIC_EXERCISE_READ_ERROR)
             val zone = ZoneId.of(mapping.zoneId)
             val dayStart = day.atStartOfDay(zone).toInstant()
             val dayEnd = day.plusDays(1).atStartOfDay(zone).toInstant()
@@ -72,7 +76,7 @@ class HealthConnectExerciseReader @Inject constructor(
                 for (record in page.records) {
                     // Ignore unrelated or unknown exercise types before building a non-null session.
                     val kind = exerciseKindForHealthConnect(record.exerciseType) ?: continue
-                    if (kind != mapping.exerciseKind.toExerciseKindOrNull()) continue
+                    if (kind != selectedKind) continue
                     // No empty IDs, no invalid sessions and no data from outside the day.
                     if (record.metadata.id.isBlank() ||
                         !record.endTime.isAfter(record.startTime) ||
