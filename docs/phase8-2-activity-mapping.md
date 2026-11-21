@@ -43,6 +43,12 @@ This is a stacked draft based on Phase 8.1 PR #17 and must not be merged before 
 - Mapping changes, duplicate attempts, archived habits and manual completions are handled by the transactional ledger; revocation blocks writes.
 - A removed/modified mapping invalidates pending preview state.
 
+## Phase 8.3 — Dashboard provenance badges
+- Dashboard observes only local Room exercise-completion provenance (never directly queries Health Connect on launch).
+- A badge reading **Completed via Health Connect** appears for an exercise-derived completion **today** in all three dashboard layouts (five-day, mini-calendar and compact). Ordinary manual completions are unbadged.
+- Badge uses exact linked Action ID from the active ledger, not a timestamp heuristic. Deleting that Action nulls the ledger link and hides the badge while preserving the undo tombstone.
+- Added pure ID-matching tests and a reactive DAO/ViewModel flow test.
+
 ## Remaining before 8.2 completion
 1. Validate the Room 6→7 migration and exported schema on CI, then decide if mappings should be included in versioned CSV backup (currently intentionally omitted).
 2. Extend explicit read-only preview into an opt-in transactional sync coordinator only after testing the reader with a fake client. No automatic actions yet.

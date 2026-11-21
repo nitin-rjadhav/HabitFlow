@@ -21,6 +21,7 @@ import com.ofalvai.habittracker.core.common.AppPreferences
 import com.ofalvai.habittracker.core.common.OnboardingManager
 import com.ofalvai.habittracker.core.common.Telemetry
 import com.ofalvai.habittracker.core.database.HabitDao
+import com.ofalvai.habittracker.core.database.ExerciseAutoCompletionDao
 import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.model.ActionHistory
 import com.ofalvai.habittracker.core.model.Habit
@@ -54,6 +55,7 @@ class DashboardViewModelTest {
     private val appPreferences = mock<AppPreferences>()
     private val telemetry = mock<Telemetry>()
     private val onboardingManager = mock<OnboardingManager>()
+    private val exerciseAutoCompletionDao = mock<ExerciseAutoCompletionDao>()
 
     private lateinit var viewModel: DashboardViewModel
 
@@ -326,5 +328,28 @@ class DashboardViewModelTest {
         }
     }
 
-    private fun createViewModel() = DashboardViewModel(dao, repo, appPreferences, telemetry, onboardingManager)
+    @Test
+    fun `When auto-completion source changes Then active action IDs update`() = runTest {
+        val ids = MutableSharedFlow<List<Int>>()
+        given(exerciseAutoCompletionDao.observeActiveExerciseActionIds()).willReturn(ids)
+        // Construct explicitly to preserve this specific mutable-flow fixture.
+        val vm = DashboardViewModel(
+            dao, repo, appPreferences, telemetry, onboardingManager, exerciseAutoCompletionDao
+        )
+        vm.exerciseActionIds.test {
+            ids.emit(listOf(42, 42, 65))
+            assertEquals(setOf(42, 65), awaitItem())
+            ids.emit(listOf(65))
+            assertEquals(setOf(65), awaitItem())
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    private fun createViewModel(): DashboardViewModel {
+        given(exerciseAutoCompletionDao.observeActiveExerciseActionIds())
+            .willReturn(flowOf(emptyList()))
+        return DashboardViewModel(
+            dao, repo, appPreferences, telemetry, onboardingManager, exerciseAutoCompletionDao
+        )
+    }
 }

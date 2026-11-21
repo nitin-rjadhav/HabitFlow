@@ -28,6 +28,7 @@ import com.ofalvai.habittracker.core.model.HabitId
 import com.ofalvai.habittracker.core.model.HabitWithActions
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.ItemMoveEvent
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.ReorderableHabitList
+import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.isExerciseCompletedToday
 import kotlinx.collections.immutable.ImmutableList
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 
@@ -37,7 +38,8 @@ fun MiniCalendarHabitList(
     onActionToggle: (Action, Habit, Int) -> Unit,
     onHabitClick: (HabitId) -> Unit,
     onAddHabitClick: () -> Unit,
-    onMove: (ItemMoveEvent) -> Unit
+    onMove: (ItemMoveEvent) -> Unit,
+    exerciseActionIds: Set<Int> = emptySet()
 ) {
     Column(horizontalAlignment = Alignment.End) {
         ReorderableHabitList(
@@ -51,7 +53,8 @@ fun MiniCalendarHabitList(
                 // Null and 0 drag offset is intentionally treated as the same because dragging
                 // is using the same gesture detection as the long-press Action toggle modifier
                 dragOffset = reorderState.offsetByKey(item.habit.id)?.y?.toFloat() ?: 0f,
-                modifier = Modifier.detectReorderAfterLongPress(reorderState)
+                modifier = Modifier.detectReorderAfterLongPress(reorderState),
+                isExerciseCompletionToday = isExerciseCompletedToday(item.actions, exerciseActionIds)
             )
         }
     }

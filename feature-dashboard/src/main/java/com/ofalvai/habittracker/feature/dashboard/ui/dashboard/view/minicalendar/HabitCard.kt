@@ -62,6 +62,7 @@ import com.ofalvai.habittracker.core.ui.theme.AppTextStyle
 import com.ofalvai.habittracker.core.ui.theme.composeColor
 import com.ofalvai.habittracker.core.ui.theme.composeContainerColor
 import com.ofalvai.habittracker.core.ui.theme.composeOnContainerColor
+import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.ExerciseCompletionBadge
 import com.ofalvai.habittracker.feature.dashboard.R
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.vibrateCompat
 import kotlinx.collections.immutable.ImmutableList
@@ -75,7 +76,8 @@ fun HabitCard(
     onActionToggle: (Action, Habit, Int) -> Unit,
     onDetailClick: (HabitId) -> Unit,
     dragOffset: Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isExerciseCompletionToday: Boolean = false
 ) {
     val vibrator = LocalContext.current.getSystemService<Vibrator>()!!
     val isDragging = dragOffset != 0f
@@ -96,6 +98,8 @@ fun HabitCard(
                 text = habit.name,
                 style = AppTextStyle.habitTitle
             )
+
+            if (isExerciseCompletionToday) ExerciseCompletionBadge()
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = AppDimensions.spacingMd),

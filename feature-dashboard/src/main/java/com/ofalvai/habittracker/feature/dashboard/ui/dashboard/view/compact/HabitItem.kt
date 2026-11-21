@@ -66,6 +66,7 @@ import com.ofalvai.habittracker.core.ui.theme.CoreIcons
 import com.ofalvai.habittracker.core.ui.theme.LocalAppColors
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.core.ui.theme.composeColor
+import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.ExerciseCompletionBadge
 import com.ofalvai.habittracker.feature.dashboard.R
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.satisfyingToggleable
 import kotlinx.collections.immutable.ImmutableList
@@ -79,7 +80,8 @@ fun HabitItem(
     onActionToggle: (Action, Habit, Int) -> Unit,
     onDetailClick: (HabitId) -> Unit,
     dragOffset: Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isExerciseCompletionToday: Boolean = false
 ) {
     val detailsLabel = "${stringResource(R.string.dashboard_item_details)}: ${habit.name}"
 
@@ -120,6 +122,12 @@ fun HabitItem(
                     contentDescription = detailsLabel
                 )
             }
+        }
+
+        if (isExerciseCompletionToday) {
+            ExerciseCompletionBadge(
+                modifier = Modifier.padding(start = AppDimensions.spacingMd, bottom = AppDimensions.spacingXs)
+            )
         }
 
         ActionSquares(

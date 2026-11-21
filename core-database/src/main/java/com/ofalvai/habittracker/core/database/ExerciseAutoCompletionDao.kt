@@ -41,6 +41,12 @@ interface ExerciseAutoCompletionDao {
     @Query("SELECT COUNT(*) FROM Action WHERE habit_id = :habitId AND timestamp >= :dayStart AND timestamp < :nextDay")
     suspend fun countExistingActions(habitId: Int, dayStart: Instant, nextDay: Instant): Int
 
+    /** IDs currently linked to an active exercise-derived Action. A deleted Action
+     * sets action_id to NULL by FK SET_NULL; the dashboard badge must disappear.
+     */
+    @Query("SELECT action_id FROM ExerciseAutoCompletionLedger WHERE action_id IS NOT NULL")
+    fun observeActiveExerciseActionIds(): Flow<List<Int>>
+
     /** Recent locally recorded exercise completions, including user-removed ones. */
     @Query("SELECT * FROM ExerciseAutoCompletionLedger ORDER BY local_date DESC, habit_id ASC LIMIT 30")
     fun observeRecentHistory(): Flow<List<ExerciseAutoCompletionLedger>>
