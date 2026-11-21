@@ -55,6 +55,10 @@ This is a stacked draft based on Phase 8.1 PR #17 and must not be merged before 
 - UI summarizes applied, unchanged and failed mapping counts. Permission revocation aborts further reads immediately. No background schedule or passive app-launch reads are enabled.
 - Unit tests cover no-permission and no-mapping paths that never read health data or write completions.
 
+## Preview expiry and local-day safety
+- A single-habit preview cannot be applied after the mapped local date changes, after 15 minutes, or if the device clock moves backwards. The user must preview again.
+- Additional deterministic tests verify the expiry window and an Asia/Kolkata midnight rollover.
+
 ## Remaining before 8.2 completion
 1. Validate the Room 6→7 migration and exported schema on CI, then decide if mappings should be included in versioned CSV backup (currently intentionally omitted).
 2. Extend explicit read-only preview into an opt-in transactional sync coordinator only after testing the reader with a fake client. No automatic actions yet.

@@ -51,6 +51,47 @@ class HealthConnectViewModelTest {
         )
     }
 
+    @Test fun previewValidityRejectsStaleOrFutureReadings() {
+        val zone = ZoneId.of("UTC")
+        val day = LocalDate.of(2026, 11, 21)
+        val previewAt = Instant.parse("2026-11-21T10:00:00Z")
+        assertEquals(true, isCurrentExercisePreview(day, zone, previewAt, previewAt))
+        assertEquals(
+            true,
+            isCurrentExercisePreview(
+                day, zone, previewAt, previewAt.plus(Duration.ofMinutes(15))
+            )
+        )
+        assertEquals(
+            false,
+            isCurrentExercisePreview(
+                day, zone, previewAt, previewAt.plus(Duration.ofMinutes(16))
+            )
+        )
+        assertEquals(
+            false,
+            isCurrentExercisePreview(
+                day, zone, previewAt, previewAt.minus(Duration.ofSeconds(1))
+            )
+        )
+    }
+
+    @Test fun previewValidityRespectsMidnightInSavedTimezone() {
+        val zone = ZoneId.of("Asia/Kolkata")
+        val day = LocalDate.of(2026, 11, 21)
+        val previewAt = Instant.parse("2026-11-21T18:28:00Z")
+        assertEquals(
+            true,
+            isCurrentExercisePreview(day, zone, previewAt, previewAt)
+        )
+        assertEquals(
+            false,
+            isCurrentExercisePreview(
+                day, zone, previewAt, previewAt.plus(Duration.ofMinutes(3))
+            )
+        )
+    }
+
     @Test fun refreshLoadsPermissionStatus() = runTest {
         val gateway = mock<HealthConnectGateway>()
         given(gateway.status()).willReturn(HealthConnectStatus.PermissionRequired)

@@ -17,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import java.time.LocalDate
 import java.time.Duration
+import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -62,6 +63,18 @@ sealed interface ExerciseApplyState {
     data class Error(val message: String) : ExerciseApplyState
 }
 
+/**
+ * A preview is valid only for its original local calendar day and for a brief
+ * period. Applying stale results after midnight or a long delay is unsafe.
+ */
+internal fun isCurrentExercisePreview(
+    day: LocalDate, zone: ZoneId, previewedAt: Instant, now: Instant
+): Boolean {
+    if (previewedAt.isAfter(now)) return false
+    if (Duration.between(previewedAt, now) > Duration.ofMinutes(15)) return false
+    return now.atZone(zone).toLocalDate() == day
+}
+
 @HiltViewModel
 class HealthConnectViewModel @Inject constructor(
     private val gateway: HealthConnectGateway,
@@ -93,7 +106,8 @@ class HealthConnectViewModel @Inject constructor(
         val mapping: ExerciseHabitMappingEntity,
         val day: LocalDate,
         val duration: Duration,
-        val ids: Set<String>
+        val ids: Set<String>,
+        val previewedAt: Instant
     )
     private var candidate: Candidate? = null
     private var applyJob: Job? = null
@@ -179,7 +193,10 @@ class HealthConnectViewModel @Inject constructor(
                             manualCompletionExists = false
                         )
                         if (matching.eligible && !alreadyCompleted) {
-                            candidate = Candidate(saved, today, matching.totalDuration, matching.supportingRecordIds)
+                            candidate = Candidate(
+                                saved, today, matching.totalDuration,
+                                matching.supportingRecordIds, Instant.now()
+                            )
                         }
                         _preview.value = ExercisePreviewState.Result(
                             habitId = habitId,
@@ -207,6 +224,22 @@ class HealthConnectViewModel @Inject constructor(
             pending == null || pending.mapping.habitId != habitId ||
             _applyState.value == ExerciseApplyState.Saving
         ) return
+        val zone = try {
+            ZoneId.of(pending.mapping.zoneId)
+        } catch (error: Exception) {
+            candidate = null
+            _preview.value = null
+            _applyState.value = ExerciseApplyState.Error("Invalid saved time zone; update the mapping")
+            return
+        }
+        if (!isCurrentExercisePreview(pending.day, zone, pending.previewedAt, Instant.now())) {
+            candidate = null
+            _preview.value = null
+            _applyState.value = ExerciseApplyState.Error(
+                "Exercise preview expired or the local day changed. Preview today again."
+            )
+            return
+        }
         _applyState.value = ExerciseApplyState.Saving
         applyJob = viewModelScope.launch {
             try {
