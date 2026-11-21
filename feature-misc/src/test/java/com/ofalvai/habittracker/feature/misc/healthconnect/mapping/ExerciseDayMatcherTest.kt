@@ -96,6 +96,31 @@ class ExerciseDayMatcherTest {
         assertTrue(result.supportingRecordIds.isEmpty())
     }
 
+    @Test fun overlappingRecordsFromDifferentSourcesDoNotDoubleCount() {
+        val result = matchExerciseDay(
+            ExerciseHabitMapping(42, ExerciseKind.RUNNING, 40),
+            listOf(
+                session("watch", "2026-11-21T10:00:00Z", "2026-11-21T10:20:00Z"),
+                session("phone", "2026-11-21T10:10:00Z", "2026-11-21T10:30:00Z")
+            ), day, utc, false
+        )
+        assertFalse(result.eligible)
+        assertEquals(Duration.ofMinutes(30), result.totalDuration)
+        assertEquals(setOf("watch", "phone"), result.supportingRecordIds)
+    }
+
+    @Test fun adjacentNonOverlappingSessionsStillAddUp() {
+        val result = matchExerciseDay(
+            running,
+            listOf(
+                session("watch", "2026-11-21T10:00:00Z", "2026-11-21T10:15:00Z"),
+                session("phone", "2026-11-21T10:15:00Z", "2026-11-21T10:30:00Z")
+            ), day, utc, false
+        )
+        assertTrue(result.eligible)
+        assertEquals(Duration.ofMinutes(30), result.totalDuration)
+    }
+
     @Test fun validatesUserSelectedMapping() {
         assertThrows(IllegalArgumentException::class.java) {
             ExerciseHabitMapping(0, ExerciseKind.RUNNING, 30)

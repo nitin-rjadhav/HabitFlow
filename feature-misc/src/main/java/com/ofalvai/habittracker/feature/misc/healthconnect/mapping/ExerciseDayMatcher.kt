@@ -57,12 +57,15 @@ fun matchExerciseDay(
     }
     val start = day.atStartOfDay(zone).toInstant()
     val end = day.plusDays(1).atStartOfDay(zone).toInstant()
-    var total = Duration.ZERO
     val contributingIds = linkedSetOf<String>()
+    val clippedIntervals = mutableListOf<Pair<Instant, Instant>>()
 
-    for (session in sessions.distinctBy { it.providerRecordId }) {
-        if (session.providerRecordId.isBlank() ||
-            session.kind != mapping.exerciseKind ||
+    // A single exercise can be present in more than one app with different
+    // provider IDs. Count overlapping wall-clock time only once.
+    for (session in sessions.asSequence()
+        .filter { it.providerRecordId.isNotBlank() }
+        .distinctBy { it.providerRecordId }) {
+        if (session.kind != mapping.exerciseKind ||
             !session.endsAt.isAfter(session.startsAt)
         ) continue
 
@@ -71,8 +74,30 @@ fun matchExerciseDay(
         if (!intersectionEnd.isAfter(intersectionStart)) continue
 
         contributingIds += session.providerRecordId
-        total = total.plus(Duration.between(intersectionStart, intersectionEnd))
+        clippedIntervals += intersectionStart to intersectionEnd
     }
+
+    val sorted = clippedIntervals.sortedBy { it.first }
+    var total = Duration.ZERO
+    var mergedStart: Instant? = null
+    var mergedEnd: Instant? = null
+    for ((intervalStart, intervalEnd) in sorted) {
+        val currentEnd = mergedEnd
+        if (mergedStart == null || currentEnd == null) {
+            mergedStart = intervalStart
+            mergedEnd = intervalEnd
+        } else if (!intervalStart.isAfter(currentEnd)) {
+            mergedEnd = maxOf(currentEnd, intervalEnd)
+        } else {
+            total = total.plus(Duration.between(mergedStart, currentEnd))
+            mergedStart = intervalStart
+            mergedEnd = intervalEnd
+        }
+    }
+    if (mergedStart != null && mergedEnd != null) {
+        total = total.plus(Duration.between(mergedStart, mergedEnd))
+    }
+
     val eligible = total >= Duration.ofMinutes(mapping.minimumDurationMinutes.toLong())
     return ExerciseDayMatch(eligible, total, contributingIds)
 }

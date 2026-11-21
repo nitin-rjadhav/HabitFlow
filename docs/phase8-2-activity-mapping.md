@@ -19,9 +19,15 @@ This is a stacked draft based on Phase 8.1 PR #17 and must not be merged before 
 - Permission request is hidden until at least one explicit mapping is saved. This does not trigger automatic health reads or habit completions.
 - Mappings remain local; displayed UI warns that automatic completion is not yet enabled.
 
+## Read-only exercise adapter
+- Added a guarded, on-demand Health Connect exercise-session reader with permission checks, paginated reads, deduplication and safe failure outcomes. It is **not invoked by the UI or background work yet**.
+- Running includes treadmill; cycling includes stationary biking. Other exercise types are ignored.
+- A day's query covers previous midnight to capture cross-midnight exercise. Matching clips records to exact local day.
+- Session matcher unions overlapping intervals to avoid double-counting the same workout from watch and phone, with regression tests.
+
 ## Remaining before 8.2 completion
 1. Validate the Room 6→7 migration and exported schema on CI, then decide if mappings should be included in versioned CSV backup (currently intentionally omitted).
-2. Add Health Connect read gateway for the selected exercise sessions only after explicit user opt-in and existing permission, with pagination, revocation handling and SDK guard.
+2. Wire the new on-demand Health Connect read gateway to explicit user refresh/sync only after permission, with rate-limit and revocation handling, and exercise reads tested with a fake client.
 3. Implement day-level sync coordinator and idempotent transactional automatic completion with manual-override controls. Mapping selection UI is implemented but requires UI tests.
 4. Add database tests: repeated sync, duplicate providers, timezone/DST, manual override, deletion, permission revoke, and restored backup.
 5. Complete CI and device tests, and verify privacy copy.
