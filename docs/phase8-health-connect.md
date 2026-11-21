@@ -18,7 +18,7 @@ Status: In progress on `feature/phase8-1-health-connect-foundation`. Phase 7.2 (
 - [ ] Create an injectable gateway for availability, permissions, and record reads (availability and permissions implemented; record reads deferred to 8.2).
 - [x] Build a Settings entry and opt-in setup screen with availability/permission/error states, single read-only exercise permission, and rationale activity.
 - [ ] Add unit tests for availability and permission transitions.
-- [ ] Validate Android build, emulator smoke tests, and supported-device behavior.
+- [ ] Validate Android build, emulator smoke tests (including targeted Health Connect settings/rationale navigation), and supported-device behavior. Physical-device permission grant/deny/revoke remains pending.
 
 ### 8.2 — Mapping and automatic completion
 - [ ] Let users select a habit and a supported activity type (initially walking/running/cycling).

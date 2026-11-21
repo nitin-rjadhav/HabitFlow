@@ -150,4 +150,10 @@ if [[ "${RUN_COMPOSE_UI:-false}" == "true" ]]; then
 else
   echo "Compose dashboard tests skipped in core smoke run (known emulator hang)"
 fi
+# Navigate the production Compose UI without granting or reading health data.
+# Verify the opt-in entry, explicit privacy explanation, and system rationale activity.
+echo "Running Health Connect navigation and rationale smoke test"
+timeout --signal=TERM --kill-after=10s 150s python3 -u scripts/health-connect-ui-smoke.py \
+  | tee emulator-evidence/health-connect-ui-smoke.txt
+
 echo "Installed and launched $PACKAGE" | tee emulator-evidence/result.txt

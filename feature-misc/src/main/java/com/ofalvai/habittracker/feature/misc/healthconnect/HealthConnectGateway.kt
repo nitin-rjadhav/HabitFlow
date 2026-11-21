@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import kotlinx.coroutines.CancellationException
 
 /**
  * This gateway must not access Health Connect APIs on devices below API 26.
@@ -54,6 +55,8 @@ class HealthConnectGateway @Inject constructor(@ApplicationContext private val c
                     else HealthConnectStatus.PermissionRequired
                 else -> HealthConnectStatus.Unavailable
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (error: Exception) {
             HealthConnectStatus.Error(error.message ?: "Health Connect check failed")
         }
