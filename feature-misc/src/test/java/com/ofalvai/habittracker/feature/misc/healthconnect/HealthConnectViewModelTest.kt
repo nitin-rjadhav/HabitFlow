@@ -28,6 +28,7 @@ class HealthConnectViewModelTest {
     private val autoCompletionDao = mock<ExerciseAutoCompletionDao>()
 
     private fun viewModel(gateway: HealthConnectGateway = mock()): HealthConnectViewModel {
+        given(autoCompletionDao.observeRecentHistory()).willReturn(flowOf(emptyList()))
         given(mappingDao.observeMappings()).willReturn(flowOf(emptyList()))
         given(habitDao.getActiveHabitsWithActions()).willReturn(flowOf(emptyList()))
         return HealthConnectViewModel(gateway, habitDao, mappingDao, reader, autoCompletionDao)
@@ -131,6 +132,18 @@ class HealthConnectViewModelTest {
             viewModel.preview.value
         )
         verifyNoInteractions(reader)
+    }
+
+    @Test fun disconnectRemovesMappingsWithoutTouchingHabitActionsOrAutoHistory() = runTest {
+        val viewModel = viewModel()
+        viewModel.disconnect()
+        advanceUntilIdle()
+        verify(mappingDao).removeAllMappings()
+        verifyNoInteractions(reader)
+        org.mockito.kotlin.verify(autoCompletionDao, org.mockito.kotlin.never()).applyEligibleDay(
+            org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any(),
+            org.mockito.kotlin.any()
+        )
     }
 
     @Test fun removeMappingDeletesOnlyLocalSettings() = runTest {

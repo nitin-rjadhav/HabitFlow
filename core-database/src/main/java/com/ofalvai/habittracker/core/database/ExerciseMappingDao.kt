@@ -20,6 +20,13 @@ interface ExerciseMappingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMapping(mapping: ExerciseHabitMappingEntity)
 
+    /**
+     * Disconnect the on-device mapping setup. Foreign keys clear source IDs,
+     * but the historical completion ledger and actual Actions are preserved.
+     */
+    @Query("DELETE FROM ExerciseHabitMapping")
+    suspend fun removeAllMappings()
+
     @Query("DELETE FROM ExerciseHabitMapping WHERE habit_id = :habitId")
     suspend fun removeMapping(habitId: Int)
 

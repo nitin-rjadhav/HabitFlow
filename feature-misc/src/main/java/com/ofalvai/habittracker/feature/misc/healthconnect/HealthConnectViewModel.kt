@@ -7,6 +7,7 @@ import com.ofalvai.habittracker.core.database.ExerciseAutoCompletionDao
 import com.ofalvai.habittracker.core.database.ExerciseApplyResult
 import com.ofalvai.habittracker.core.database.HabitDao
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
+import com.ofalvai.habittracker.core.database.entity.ExerciseAutoCompletionLedger
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseHabitMapping
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseSessionReadResult
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.HealthConnectExerciseReader
@@ -64,6 +65,9 @@ class HealthConnectViewModel @Inject constructor(
         .map { results -> results.map { it.habit } }
 
     val savedMappings = mappingDao.observeMappings()
+
+    /** Local audit history remains readable after Health Connect is revoked or disconnected. */
+    val completionHistory = autoCompletionDao.observeRecentHistory()
 
     private val _mappingError = MutableStateFlow<String?>(null)
     val mappingError: StateFlow<String?> = _mappingError
@@ -235,6 +239,21 @@ class HealthConnectViewModel @Inject constructor(
                 throw cancelled
             } catch (error: Exception) {
                 _mappingError.value = error.message ?: "Could not save activity mapping"
+            }
+        }
+    }
+
+    /** Stop Health Connect usage without deleting any manually/automatically completed habits. */
+    fun disconnect() {
+        clearPreview()
+        viewModelScope.launch {
+            try {
+                mappingDao.removeAllMappings()
+                _mappingError.value = null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _mappingError.value = error.message ?: "Could not remove exercise mappings"
             }
         }
     }

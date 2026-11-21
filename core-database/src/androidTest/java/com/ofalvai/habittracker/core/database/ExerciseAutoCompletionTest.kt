@@ -14,6 +14,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.first
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -79,6 +80,35 @@ class ExerciseAutoCompletionTest : BaseInstrumentedTest() {
         assertEquals(ExerciseApplyResult.ExistingCompletion, apply())
         assertNull(autoDao.getLedger(42, day.toString()))
         assertEquals(1, habitDao.getActionsForHabit(42).size)
+    }
+
+    @Test fun historyRetainsAppliedThenUndoneStatusAfterDisconnect() = runTest {
+        setupMapping()
+        apply()
+        val active = autoDao.observeRecentHistory().first()
+        assertEquals(1, active.size)
+        assertNotNull(active.single().actionId)
+
+        val actionId = habitDao.getActionsForHabit(42).single().id
+        habitDao.deleteAction(actionId)
+        mappingDao.removeAllMappings()
+
+        val undone = autoDao.observeRecentHistory().first()
+        assertEquals(1, undone.size)
+        assertNull(undone.single().actionId)
+        assertEquals(35 * 60_000L, undone.single().durationMillis)
+        assertEquals(0, mappingDao.getSourceRecordCount(42))
+        assertEquals(0, habitDao.getActionsForHabit(42).size)
+        assertEquals(ExerciseApplyResult.MappingChanged, apply())
+    }
+
+    @Test fun disconnectPreservesPreviouslyAppliedAction() = runTest {
+        setupMapping()
+        apply()
+        mappingDao.removeAllMappings()
+        assertEquals(1, habitDao.getActionsForHabit(42).size)
+        assertNotNull(autoDao.observeRecentHistory().first().single().actionId)
+        assertEquals(0, mappingDao.getSourceRecordCount(42))
     }
 
     @Test fun userUndoLeavesSuppressionLedgerAndPreventsReapply() = runTest {

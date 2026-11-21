@@ -29,13 +29,13 @@ Status: In progress on draft PR #17 (`feature/phase8-1-health-connect-foundation
 - [x] Unit/instrumented tests for timezone boundaries, duplicates, deletion, idempotence and manual precedence; full migration/backup compatibility and device tests still pending.
 
 ### 8.3 — UI integration
-- [ ] Distinguish manual vs automatic completions in dashboard and history.
+- [ ] Distinguish manual vs automatic completions on the dashboard; a local exercise-only history is implemented in Settings.
 - [ ] Show sync status, last sync, error handling, and accessible explanations.
-- [ ] Add manual refresh and disconnect controls; define behavior for previously imported records.
+- [x] Add manual refresh (existing Check again) and mapping disconnect controls, retaining previously applied Actions and local undo ledger while deleting mappings/source IDs. OS-level Health Connect permission must be revoked separately in Android settings.
 - [ ] Complete regression testing including no-Health-Connect installs.
 
 ## Explicitly deferred
 - Phase 7.2 UI improvements including #16 Delete Habit.
 - Phase 7.3 full existing-feature manual regression.
 
-Phase 8.1 never reads health records. Phase 8.2 only reads on an explicit Preview tap after permission and writes a local completion on a separate Apply tap. Neither branch uploads health data or requests permission on launch. Phase 8.3 is not yet implemented. Keep PRs unmerged pending authorization.
+Phase 8.1 never reads health records. Phase 8.2 only reads on an explicit Preview tap after permission and writes a local completion on a separate Apply tap. Neither branch uploads health data or requests permission on launch. Phase 8.3 has local Settings history and mapping disconnect controls, but dashboard indicators, sync state, device testing and regression remain unfinished. Keep PRs unmerged pending authorization.

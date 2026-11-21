@@ -14,6 +14,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import kotlinx.coroutines.flow.Flow
 
 sealed interface ExerciseApplyResult {
     data class Applied(val actionId: Int) : ExerciseApplyResult
@@ -39,6 +40,10 @@ interface ExerciseAutoCompletionDao {
 
     @Query("SELECT COUNT(*) FROM Action WHERE habit_id = :habitId AND timestamp >= :dayStart AND timestamp < :nextDay")
     suspend fun countExistingActions(habitId: Int, dayStart: Instant, nextDay: Instant): Int
+
+    /** Recent locally recorded exercise completions, including user-removed ones. */
+    @Query("SELECT * FROM ExerciseAutoCompletionLedger ORDER BY local_date DESC, habit_id ASC LIMIT 30")
+    fun observeRecentHistory(): Flow<List<ExerciseAutoCompletionLedger>>
 
     @Query("SELECT * FROM ExerciseAutoCompletionLedger WHERE habit_id = :habitId AND local_date = :day LIMIT 1")
     suspend fun getLedger(habitId: Int, day: String): ExerciseAutoCompletionLedger?

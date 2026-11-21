@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +48,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.ofalvai.habittracker.feature.misc.healthconnect.ExercisePreviewState
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
+import com.ofalvai.habittracker.core.database.entity.ExerciseAutoCompletionLedger
 import com.ofalvai.habittracker.core.database.entity.Habit
 import com.ofalvai.habittracker.core.ui.component.AppDefaultAppBar
 import com.ofalvai.habittracker.feature.misc.R
@@ -72,13 +74,15 @@ fun HealthConnectScreen(
     val status by viewModel.status.collectAsState()
     val habits by viewModel.availableHabits.collectAsState(initial = emptyList())
     val mappings by viewModel.savedMappings.collectAsState(initial = emptyList())
+    val completionHistory by viewModel.completionHistory.collectAsState(initial = emptyList())
     val mappingError by viewModel.mappingError.collectAsState()
     val preview by viewModel.preview.collectAsState()
     val applyState by viewModel.applyState.collectAsState()
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         SupportedHealthConnectScreen(
-            viewModel, status, navigateBack, habits, mappings, mappingError, preview, applyState
+            viewModel, status, navigateBack, habits, mappings, completionHistory,
+            mappingError, preview, applyState
         )
     } else {
         HealthConnectContent(
@@ -89,11 +93,13 @@ fun HealthConnectScreen(
             permissionDenied = false,
             habits = emptyList(),
             mappings = emptyList(),
+            completionHistory = emptyList(),
             mappingError = null,
             preview = null,
             applyState = null,
             onPreview = {},
             onApply = {},
+            onDisconnect = {},
             saveMapping = { _, _, _ -> },
             removeMapping = {}
         )
@@ -107,6 +113,7 @@ private fun SupportedHealthConnectScreen(
     navigateBack: () -> Unit,
     habits: List<Habit>,
     mappings: List<ExerciseHabitMappingEntity>,
+    completionHistory: List<ExerciseAutoCompletionLedger>,
     mappingError: String?,
     preview: ExercisePreviewState?,
     applyState: ExerciseApplyState?
@@ -136,11 +143,13 @@ private fun SupportedHealthConnectScreen(
         permissionDenied = permissionDenied,
         habits = habits,
         mappings = mappings,
+        completionHistory = completionHistory,
         mappingError = mappingError,
         preview = preview,
         applyState = applyState,
         onPreview = viewModel::previewToday,
         onApply = viewModel::applyPreview,
+        onDisconnect = viewModel::disconnect,
         saveMapping = viewModel::saveMapping,
         removeMapping = viewModel::removeMapping
     )
@@ -155,11 +164,13 @@ private fun HealthConnectContent(
     permissionDenied: Boolean,
     habits: List<Habit>,
     mappings: List<ExerciseHabitMappingEntity>,
+    completionHistory: List<ExerciseAutoCompletionLedger>,
     mappingError: String?,
     preview: ExercisePreviewState?,
     applyState: ExerciseApplyState?,
     onPreview: (Int) -> Unit,
     onApply: (Int) -> Unit,
+    onDisconnect: () -> Unit,
     saveMapping: (Int, String, Int) -> Unit,
     removeMapping: (Int) -> Unit
 ) {
@@ -245,6 +256,13 @@ private fun HealthConnectContent(
                     saveMapping, removeMapping
                 )
             }
+
+            ExerciseConnectionHistory(
+                habits = habits,
+                mappings = mappings,
+                history = completionHistory,
+                onDisconnect = onDisconnect
+            )
         }
     }
 }
@@ -412,5 +430,82 @@ private fun ExerciseMappingSettings(
         if (error != null) {
             Text(error, color = MaterialTheme.colorScheme.error)
         }
+    }
+}
+
+/** Local-only audit trail: displays saved automatic completions and explicit undos. */
+@Composable
+private fun ExerciseConnectionHistory(
+    habits: List<Habit>,
+    mappings: List<ExerciseHabitMappingEntity>,
+    history: List<ExerciseAutoCompletionLedger>,
+    onDisconnect: () -> Unit
+) {
+    var confirmationOpen by remember { mutableStateOf(false) }
+
+    if (mappings.isNotEmpty()) {
+        Text(
+            text = stringResource(R.string.health_connect_connection_title),
+            style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+            text = stringResource(R.string.health_connect_connection_explanation),
+            style = MaterialTheme.typography.bodySmall
+        )
+        OutlinedButton(onClick = { confirmationOpen = true }) {
+            Text(stringResource(R.string.health_connect_disconnect_action))
+        }
+    }
+
+    Text(
+        text = stringResource(R.string.health_connect_history_title),
+        style = MaterialTheme.typography.titleMedium
+    )
+    if (history.isEmpty()) {
+        Text(stringResource(R.string.health_connect_history_empty))
+    } else {
+        history.forEach { entry ->
+            val habitName = habits.find { it.id == entry.habitId }?.name
+                ?: stringResource(R.string.health_connect_mapping_unknown_habit, entry.habitId)
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = stringResource(
+                        R.string.health_connect_history_row,
+                        habitName, entry.localDate, entry.durationMillis / 60_000L,
+                        entry.sourceRecordCount
+                    )
+                )
+                Text(
+                    text = stringResource(
+                        if (entry.actionId == null) R.string.health_connect_history_undone
+                        else R.string.health_connect_history_applied
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+
+    if (confirmationOpen) {
+        AlertDialog(
+            onDismissRequest = { confirmationOpen = false },
+            title = { Text(stringResource(R.string.health_connect_disconnect_title)) },
+            text = { Text(stringResource(R.string.health_connect_disconnect_explanation)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmationOpen = false
+                    onDisconnect()
+                }) { Text(stringResource(R.string.health_connect_disconnect_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmationOpen = false }) {
+                    Text(stringResource(coreR.string.common_cancel))
+                }
+            }
+        )
     }
 }
