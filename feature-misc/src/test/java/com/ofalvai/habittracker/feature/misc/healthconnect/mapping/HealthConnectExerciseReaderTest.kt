@@ -3,9 +3,16 @@ package com.ofalvai.habittracker.feature.misc.healthconnect.mapping
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class HealthConnectExerciseReaderTest {
+    @Test fun providerErrorsUsePrivacySafeGenericMessage() {
+        val message = GENERIC_EXERCISE_READ_ERROR
+        assertEquals("Unable to read exercise sessions. Try again or check Health Connect access.", message)
+        assertFalse(message.contains("recordId", ignoreCase = true))
+    }
+
     @Test fun recognizesWalking() {
         assertEquals(
             ExerciseKind.WALKING,
