@@ -23,6 +23,7 @@ import com.ofalvai.habittracker.core.common.StreamOpener
 import com.ofalvai.habittracker.core.common.Telemetry
 import com.ofalvai.habittracker.core.database.HabitDao
 import com.ofalvai.habittracker.core.database.entity.Action
+import com.ofalvai.habittracker.feature.misc.healthconnect.ExerciseSyncReceiptStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -44,7 +45,8 @@ private const val BACKUP_VERSION = 1
 class ExportViewModel @Inject constructor(
     private val streamOpener: StreamOpener,
     private val habitDao: HabitDao,
-    private val telemetry: Telemetry
+    private val telemetry: Telemetry,
+    private val syncReceiptStore: ExerciseSyncReceiptStore
 ) : ViewModel() {
 
     val dataSummary: Flow<DataSummary> = habitDao.getTotalHabitCount()
@@ -143,7 +145,26 @@ class ExportViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val backup = loadBackup(uri)
+                // The selected ZIP could have changed after the initial preview.
+                // Never replace local habits with an unsupported backup version.
+                if (backup.backupVersion > BACKUP_VERSION) {
+                    importState.value = ImportState(
+                        backupFileURI = uri, backupSummary = null,
+                        error = ExportImportError.BackupVersionTooHigh
+                    )
+                    return@launch
+                }
                 habitDao.restoreBackup(backup.habits, backup.actions)
+                // Manual ZIP backups omit Health Connect sync receipts. Keeping the
+                // old receipt would misrepresent syncs from the restored database.
+                // The database transaction has already committed. If
+                // best-effort metadata cleanup fails, preserve the truthful
+                // restore-success state rather than reporting a false rollback.
+                try {
+                    syncReceiptStore.clear()
+                } catch (receiptError: Exception) {
+                    telemetry.logNonFatal(receiptError)
+                }
                 importState.value = ImportState(backupFileURI = null, backupSummary = null, error = null)
             } catch (e: Exception) {
                 telemetry.logNonFatal(e)
