@@ -272,8 +272,10 @@ class ExportViewModelTest {
 
             override fun openOutputStream(uri: URI): OutputStream = ByteArrayOutputStream()
         }
-        org.mockito.kotlin.doThrow(IllegalStateException("simulated preference failure"))
-            .whenever(syncReceiptStore).clear()
+        // Mockito's Java-style doThrow works on this void-returning Kotlin method
+        // without requiring an extension import or calling the mock while stubbing.
+        org.mockito.Mockito.doThrow(IllegalStateException("simulated preference failure"))
+            .`when`(syncReceiptStore).clear()
         val model = viewModel(streamOpener)
         val uri = URI.create("mock")
 
