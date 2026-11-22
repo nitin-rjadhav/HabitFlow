@@ -114,13 +114,13 @@
     <string name="export_error_backup_version_too_high">This backup was created with a newer app version. Upgrade the app to the latest version, then try again.</string>
     <string name="export_backup_info">App data is backed up regularly using Android\'s automatic backup mechanism.\nYou also have the option to export your data below.</string>
     <string name="export_widget_export_title">Back up your data</string>
-    <string name="export_widget_export_description">Export your habit data to CSV formatted files.</string>
+    <string name="export_widget_export_description">This ZIP includes habits and completion timestamps only. Health Connect mappings, exercise source history, sync receipts, and undo history are not included.</string>
     <string name="export_widget_export_filepicker_button">Choose export location</string>
     <string name="export_widget_export_success_title">Export is ready</string>
     <string name="export_widget_export_success_path">Path: %s</string>
     <string name="export_widget_export_success_share_button">Share file</string>
     <string name="export_widget_import_title">Restore your data</string>
-    <string name="export_widget_import_description">Import data from a previously exported backup.</string>
+    <string name="export_widget_import_description">Restore habits and completion timestamps from a ZIP backup. Health Connect mappings and undo protection are not restored; review your habits before reconnecting exercise data.</string>
     <string name="export_widget_import_filepicker_button">Choose backup file</string>
     <string name="export_widget_import_restore_button">Restore backup</string>
     <string name="export_widget_import_file_path">Backup file:</string>
