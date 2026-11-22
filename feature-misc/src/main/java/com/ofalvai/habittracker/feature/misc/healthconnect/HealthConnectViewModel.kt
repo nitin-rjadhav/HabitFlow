@@ -82,7 +82,8 @@ class HealthConnectViewModel @Inject constructor(
     private val mappingDao: ExerciseMappingDao,
     private val exerciseReader: HealthConnectExerciseReader,
     private val autoCompletionDao: ExerciseAutoCompletionDao,
-    private val syncReceiptStore: ExerciseSyncReceiptStore
+    private val syncReceiptStore: ExerciseSyncReceiptStore,
+    private val timeSource: HealthConnectTimeSource
 ) : ViewModel() {
     private val _status = MutableStateFlow<HealthConnectStatus?>(null)
     val status: StateFlow<HealthConnectStatus?> = _status
@@ -179,7 +180,7 @@ class HealthConnectViewModel @Inject constructor(
                         return@launch
                     }
                 val zone = ZoneId.of(saved.zoneId)
-                val today = LocalDate.now(zone)
+                val today = timeSource.now().atZone(zone).toLocalDate()
                 when (val result = exerciseReader.readMappedDay(saved, today)) {
                     ExerciseSessionReadResult.Unavailable ->
                         _preview.value = ExercisePreviewState.Unavailable
@@ -200,7 +201,7 @@ class HealthConnectViewModel @Inject constructor(
                         if (matching.eligible && !alreadyCompleted) {
                             candidate = Candidate(
                                 saved, today, matching.totalDuration,
-                                matching.supportingRecordIds, Instant.now()
+                                matching.supportingRecordIds, timeSource.now()
                             )
                         }
                         _preview.value = ExercisePreviewState.Result(
@@ -222,6 +223,14 @@ class HealthConnectViewModel @Inject constructor(
         }
     }
 
+    private fun expirePendingPreview() {
+        candidate = null
+        _preview.value = null
+        _applyState.value = ExerciseApplyState.Error(
+            "Exercise preview expired or the local day changed. Preview today again."
+        )
+    }
+
     /** Only the user's second explicit action can write a completion. */
     fun applyPreview(habitId: Int) {
         val pending = candidate
@@ -237,12 +246,8 @@ class HealthConnectViewModel @Inject constructor(
             _applyState.value = ExerciseApplyState.Error("Invalid saved time zone; update the mapping")
             return
         }
-        if (!isCurrentExercisePreview(pending.day, zone, pending.previewedAt, Instant.now())) {
-            candidate = null
-            _preview.value = null
-            _applyState.value = ExerciseApplyState.Error(
-                "Exercise preview expired or the local day changed. Preview today again."
-            )
+        if (!isCurrentExercisePreview(pending.day, zone, pending.previewedAt, timeSource.now())) {
+            expirePendingPreview()
             return
         }
         _applyState.value = ExerciseApplyState.Saving
@@ -252,6 +257,13 @@ class HealthConnectViewModel @Inject constructor(
                     candidate = null
                     _applyState.value = ExerciseApplyState.PermissionRequired
                     _status.value = HealthConnectStatus.PermissionRequired
+                    return@launch
+                }
+                // Permission checks can suspend. The preview might cross midnight
+                // or exceed its 15-minute TTL while the user waits for access.
+                // Revalidate immediately before the first local completion write.
+                if (!isCurrentExercisePreview(pending.day, zone, pending.previewedAt, timeSource.now())) {
+                    expirePendingPreview()
                     return@launch
                 }
                 _applyState.value = when (val result = autoCompletionDao.applyEligibleDay(
