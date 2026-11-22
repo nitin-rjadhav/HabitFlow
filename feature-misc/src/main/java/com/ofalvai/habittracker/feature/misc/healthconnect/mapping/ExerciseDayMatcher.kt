@@ -63,11 +63,13 @@ fun matchExerciseDay(
     // A single exercise can be present in more than one app with different
     // provider IDs. Count overlapping wall-clock time only once.
     for (session in sessions.asSequence()
-        .filter { it.providerRecordId.isNotBlank() }
+        // Validate before deduplication: a malformed or unrelated record must
+        // not hide a later valid record with the same provider identity.
+        .filter { it.providerRecordId.isNotBlank() &&
+            it.kind == mapping.exerciseKind &&
+            it.endsAt.isAfter(it.startsAt)
+        }
         .distinctBy { it.providerRecordId }) {
-        if (session.kind != mapping.exerciseKind ||
-            !session.endsAt.isAfter(session.startsAt)
-        ) continue
 
         val intersectionStart = maxOf(session.startsAt, start)
         val intersectionEnd = minOf(session.endsAt, end)
