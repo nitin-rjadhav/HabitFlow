@@ -9,6 +9,7 @@ import com.ofalvai.habittracker.core.database.HabitDao
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
 import com.ofalvai.habittracker.core.database.entity.ExerciseAutoCompletionLedger
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseHabitMapping
+import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.GENERIC_EXERCISE_READ_ERROR
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseSessionReadResult
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.HealthConnectExerciseReader
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.matchExerciseDay
@@ -188,7 +189,7 @@ class HealthConnectViewModel @Inject constructor(
                         _status.value = HealthConnectStatus.PermissionRequired
                     }
                     is ExerciseSessionReadResult.Failure ->
-                        _preview.value = ExercisePreviewState.Failure(result.message)
+                        _preview.value = ExercisePreviewState.Failure(GENERIC_EXERCISE_READ_ERROR)
                     is ExerciseSessionReadResult.Success -> {
                         val alreadyCompleted = habitDao.getActionsForHabit(habitId)
                             .any { it.timestamp.atZone(zone).toLocalDate() == today }
@@ -215,9 +216,7 @@ class HealthConnectViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _preview.value = ExercisePreviewState.Failure(
-                    error.message ?: "Unable to preview exercise"
-                )
+                _preview.value = ExercisePreviewState.Failure("Unable to preview exercise")
             }
         }
     }
@@ -272,9 +271,7 @@ class HealthConnectViewModel @Inject constructor(
                 _status.value = HealthConnectStatus.PermissionRequired
             } catch (error: Exception) {
                 candidate = null
-                _applyState.value = ExerciseApplyState.Error(
-                    error.message ?: "Could not apply exercise completion"
-                )
+                _applyState.value = ExerciseApplyState.Error("Could not apply exercise completion")
             }
         }
     }
@@ -390,9 +387,7 @@ class HealthConnectViewModel @Inject constructor(
                 _status.value = HealthConnectStatus.PermissionRequired
                 _syncState.value = ExerciseSyncState.PermissionRequired
             } catch (error: Exception) {
-                _syncState.value = ExerciseSyncState.Error(
-                    error.message ?: "Unable to complete today's mapped habits"
-                )
+                _syncState.value = ExerciseSyncState.Error("Unable to complete today's mapped habits")
             }
         }
     }
@@ -412,7 +407,7 @@ class HealthConnectViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _mappingError.value = error.message ?: "Could not save activity mapping"
+                _mappingError.value = "Could not save activity mapping"
             }
         }
     }
@@ -429,7 +424,7 @@ class HealthConnectViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _mappingError.value = error.message ?: "Could not remove exercise mappings"
+                _mappingError.value = "Could not remove exercise mappings"
             }
         }
     }
@@ -443,7 +438,7 @@ class HealthConnectViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _mappingError.value = error.message ?: "Could not remove activity mapping"
+                _mappingError.value = "Could not remove activity mapping"
             }
         }
     }

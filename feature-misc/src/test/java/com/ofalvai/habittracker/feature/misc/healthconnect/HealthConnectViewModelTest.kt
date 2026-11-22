@@ -10,6 +10,7 @@ import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseSessi
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.HealthConnectExerciseReader
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseSessionReadResult
 import com.ofalvai.habittracker.core.testing.MainCoroutineRule
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import java.time.Duration
 import java.time.Instant
@@ -169,6 +170,72 @@ class HealthConnectViewModelTest {
                 assertEquals(30, it.minimumDurationMinutes)
             }
         )
+    }
+
+    @Test fun providerFailurePreviewNeverExposesRawExceptionDetails() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        val viewModel = viewModel(gateway)
+        val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 20, "UTC")
+        val today = LocalDate.now(ZoneId.of("UTC"))
+        given(mappingDao.getMapping(42)).willReturn(mapping)
+        given(reader.readMappedDay(mapping, today)).willReturn(
+            ExerciseSessionReadResult.Failure("private-provider-record-id=12345")
+        )
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.previewToday(42)
+        advanceUntilIdle()
+
+        assertEquals(
+            ExercisePreviewState.Failure(
+                "Unable to read exercise sessions. Try again or check Health Connect access."
+            ),
+            viewModel.preview.value
+        )
+        verifyNoCompletionWrites()
+    }
+
+    @Test fun unexpectedPreviewExceptionUsesPrivacySafeFallback() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        val viewModel = viewModel(gateway)
+        given(mappingDao.getMapping(42)).willAnswer {
+            throw IllegalStateException("raw provider token=private-123")
+        }
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.previewToday(42)
+        advanceUntilIdle()
+
+        assertEquals(
+            ExercisePreviewState.Failure("Unable to preview exercise"),
+            viewModel.preview.value
+        )
+        verifyNoCompletionWrites()
+    }
+
+    @Test fun unexpectedBulkSyncExceptionUsesPrivacySafeFallback() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        val viewModel = viewModel(gateway)
+        given(mappingDao.observeMappings()).willReturn(flow {
+            throw IllegalStateException("confidential-mapping-provider-id=54321")
+        })
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.completeEligibleHabitsToday()
+        advanceUntilIdle()
+
+        assertEquals(
+            ExerciseSyncState.Error("Unable to complete today's mapped habits"),
+            viewModel.syncState.value
+        )
+        verifyNoInteractions(reader)
+        verifyNoCompletionWrites()
     }
 
     @Test fun previewWithoutPermissionNeverReadsHealthData() = runTest {
