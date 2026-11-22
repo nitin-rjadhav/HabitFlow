@@ -442,6 +442,9 @@ class HealthConnectViewModelTest {
         given(gateway.hasExerciseReadPermission()).willReturn(true)
         val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 20, zone.id)
         val start = day.atTime(12, 0).atZone(zone).toInstant()
+        // Construct first: viewModel() initializes mock DAO flows to empty.
+        // Override the mappings afterward so this test actually exercises a read.
+        val viewModel = viewModel(gateway, clock)
         given(mappingDao.observeMappings()).willReturn(flowOf(listOf(mapping)))
         given(reader.readMappedDay(mapping, day)).willReturn(
             ExerciseSessionReadResult.Success(listOf(ExerciseSession(
@@ -449,7 +452,6 @@ class HealthConnectViewModelTest {
                 start, start.plus(Duration.ofMinutes(30))
             )))
         )
-        val viewModel = viewModel(gateway, clock)
         viewModel.refresh()
         advanceUntilIdle()
 
