@@ -29,12 +29,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -85,10 +87,12 @@ fun HabitDetailScreen(
     val vibrator = LocalContext.current.getSystemService<Vibrator>()!!
 
     val habitDetailState by viewModel.habitWithActions.collectAsState()
+    var showDeleteError by remember { mutableStateOf(false) }
 
     viewModel.habitDetailEvent.asEffect {
         when (it) {
             HabitDetailEvent.BackNavigation -> navigateBack()
+            HabitDetailEvent.DeleteError -> showDeleteError = true
         }
     }
 
@@ -129,6 +133,35 @@ fun HabitDetailScreen(
         }
     )
 
+    var pendingHabitToDelete by remember { mutableStateOf<Habit?>(null) }
+    ConfirmationDialog(
+        showDialog = pendingHabitToDelete != null,
+        title = stringResource(R.string.habitdetails_delete_title),
+        description = stringResource(
+            R.string.habitdetails_delete_description,
+            pendingHabitToDelete?.name.orEmpty()
+        ),
+        confirmText = stringResource(R.string.habitdetails_delete_confirm),
+        onDismiss = { pendingHabitToDelete = null },
+        onConfirm = {
+            val habit = pendingHabitToDelete
+            pendingHabitToDelete = null
+            if (habit != null) viewModel.deleteHabit(habit)
+        }
+    )
+    if (showDeleteError) {
+        AlertDialog(
+            onDismissRequest = { showDeleteError = false },
+            title = { Text(stringResource(R.string.habitdetails_delete_error_title)) },
+            text = { Text(stringResource(R.string.habitdetails_delete_error)) },
+            confirmButton = {
+                TextButton(onClick = { showDeleteError = false }) {
+                    Text(stringResource(R.string.habitdetails_delete_error_dismiss))
+                }
+            }
+        )
+    }
+
     HabitDetailScreen(
         habitDetailState = habitDetailState,
         singleStats = singleStats,
@@ -137,6 +170,7 @@ fun HabitDetailScreen(
         onBack = navigateBack,
         onEdit = { viewModel.updateHabit(it) },
         onArchive = onArchive,
+        onDelete = { pendingHabitToDelete = it },
         onDayToggle = onDayToggle
     )
 }
@@ -150,12 +184,13 @@ private fun HabitDetailScreen(
     onBack: () -> Unit,
     onEdit: (Habit) -> Unit,
     onArchive: (Habit) -> Unit,
+    onDelete: (Habit) -> Unit,
     onDayToggle: (LocalDate, Action) -> Unit,
 ) {
     Column(Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()) {
         val scrollState = rememberScrollState()
 
-        HabitDetailHeader(habitDetailState, singleStats, scrollState, onBack, onEdit, onArchive)
+        HabitDetailHeader(habitDetailState, singleStats, scrollState, onBack, onEdit, onArchive, onDelete)
 
         Column(Modifier.verticalScroll(scrollState).padding(16.dp)) {
             when (habitDetailState) {
@@ -311,6 +346,7 @@ fun PreviewHabitDetailScreen() {
             onBack = { },
             onEdit = { },
             onArchive = { },
+            onDelete = { },
             onDayToggle = { _, _ -> }
         )
     }
