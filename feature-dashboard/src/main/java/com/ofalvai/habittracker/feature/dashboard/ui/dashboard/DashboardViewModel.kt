@@ -23,6 +23,7 @@ import com.ofalvai.habittracker.core.common.OnboardingManager
 import com.ofalvai.habittracker.core.common.OnboardingState
 import com.ofalvai.habittracker.core.common.Telemetry
 import com.ofalvai.habittracker.core.database.HabitDao
+import com.ofalvai.habittracker.core.database.ExerciseAutoCompletionDao
 import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.model.HabitId
 import com.ofalvai.habittracker.core.model.HabitWithActions
@@ -67,7 +68,8 @@ class DashboardViewModel @Inject constructor(
     private val actionRepository: ActionRepository,
     private val appPreferences: AppPreferences,
     private val telemetry: Telemetry,
-    private val onboardingManager: OnboardingManager
+    private val onboardingManager: OnboardingManager,
+    private val exerciseAutoCompletionDao: ExerciseAutoCompletionDao
 ) : ViewModel() {
 
     val habitsWithActions: Flow<Result<ImmutableList<HabitWithActions>>> = dao
@@ -80,6 +82,10 @@ class DashboardViewModel @Inject constructor(
             telemetry.logNonFatal(it)
             emit(Result.Failure(it))
         }
+
+    /** No Health Connect read occurs on dashboard load. Observes local provenance only. */
+    val exerciseActionIds: Flow<Set<Int>> = exerciseAutoCompletionDao
+        .observeActiveExerciseActionIds().map { it.toSet() }
 
     var dashboardConfig
         get() = parseDashboardConfig(appPreferences.dashboardConfig)

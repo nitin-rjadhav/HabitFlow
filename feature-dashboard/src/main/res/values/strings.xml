@@ -23,6 +23,7 @@
     <string name="addhabit_save">Create habit</string>
 
     <string name="dashboard_title">My habits</string>
+    <string name="dashboard_exercise_completion_badge">Completed via Health Connect</string>
     <string name="dashboard_today_progress">Today</string>
     <string name="dashboard_today_progress_count">%1$d of %2$d completed</string>
     <string name="dashboard_today_progress_percent">%1$d%% complete</string>

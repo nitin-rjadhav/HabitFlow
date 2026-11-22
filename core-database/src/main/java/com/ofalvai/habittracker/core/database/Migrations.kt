@@ -63,10 +63,63 @@ internal val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+/**
+ * Phase 8.2: mapping settings and source-record provenance remain on-device.
+ * Both tables cascade on habit or mapping deletion; no existing actions are changed.
+ */
+internal val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `ExerciseHabitMapping` (" +
+                "`habit_id` INTEGER NOT NULL, " +
+                "`exercise_kind` TEXT NOT NULL, " +
+                "`minimum_duration_minutes` INTEGER NOT NULL, " +
+                "`zone_id` TEXT NOT NULL, " +
+                "PRIMARY KEY(`habit_id`), " +
+                "FOREIGN KEY(`habit_id`) REFERENCES `Habit`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `ExerciseSourceRecord` (" +
+                "`habit_id` INTEGER NOT NULL, " +
+                "`local_date` TEXT NOT NULL, " +
+                "`provider_record_id` TEXT NOT NULL, " +
+                "PRIMARY KEY(`habit_id`, `local_date`, `provider_record_id`), " +
+                "FOREIGN KEY(`habit_id`) REFERENCES `ExerciseHabitMapping`(`habit_id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+        )
+    }
+}
+
+/**
+ * V8 keeps a durable, local habit/day ledger to stop an automatically completed
+ * day from being silently re-filled after the user deletes its Action.
+ * Foreign-key SET_NULL preserves the ledger row after an Action is removed.
+ */
+internal val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `ExerciseAutoCompletionLedger` (" +
+                "`habit_id` INTEGER NOT NULL, " +
+                "`local_date` TEXT NOT NULL, " +
+                "`action_id` INTEGER, " +
+                "`duration_millis` INTEGER NOT NULL, " +
+                "`source_record_count` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`habit_id`, `local_date`), " +
+                "FOREIGN KEY(`habit_id`) REFERENCES `Habit`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, " +
+                "FOREIGN KEY(`action_id`) REFERENCES `Action`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_ExerciseAutoCompletionLedger_action_id` " +
+                "ON `ExerciseAutoCompletionLedger` (`action_id`)"
+        )
+    }
+}
+
 internal val MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
     MIGRATION_3_4,
     MIGRATION_4_5,
     MIGRATION_5_6,
+    MIGRATION_6_7,
+    MIGRATION_7_8,
 )
