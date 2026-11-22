@@ -172,6 +172,26 @@ class ExerciseDayMatcherTest {
         assertEquals(Duration.ofMinutes(90), result.totalDuration)
     }
 
+
+    @Test fun conflictingDuplicateIdsUseLongestValidIntervalRegardlessOfOrder() {
+        val short = session("same", "2026-11-21T10:00:00Z", "2026-11-21T10:10:00Z")
+        val long = session("same", "2026-11-21T10:00:00Z", "2026-11-21T10:30:00Z")
+        for (records in listOf(listOf(short, long), listOf(long, short))) {
+            val result = matchExerciseDay(running, records, day, utc, false)
+            assertTrue(result.eligible)
+            assertEquals(Duration.ofMinutes(30), result.totalDuration)
+            assertEquals(setOf("same"), result.supportingRecordIds)
+        }
+    }
+
+    @Test fun conflictingDuplicateIdsCompareClippedDurationNotWholeSession() {
+        val mostlyYesterday = session("same", "2026-11-20T20:00:00Z", "2026-11-21T00:05:00Z")
+        val today = session("same", "2026-11-21T10:00:00Z", "2026-11-21T10:30:00Z")
+        val result = matchExerciseDay(running, listOf(mostlyYesterday, today), day, utc, false)
+        assertTrue(result.eligible)
+        assertEquals(Duration.ofMinutes(30), result.totalDuration)
+    }
+
     @Test fun validatesUserSelectedMapping() {
         assertThrows(IllegalArgumentException::class.java) {
             ExerciseHabitMapping(0, ExerciseKind.RUNNING, 30)
