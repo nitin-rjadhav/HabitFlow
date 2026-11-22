@@ -58,7 +58,8 @@ class HealthConnectGateway @Inject constructor(@ApplicationContext private val c
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
-            HealthConnectStatus.Error(error.message ?: "Health Connect check failed")
+            // Provider exception messages may contain private health record details.
+            HealthConnectStatus.Error("Health Connect check failed. Try again.")
         }
     }
 }

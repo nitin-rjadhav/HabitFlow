@@ -151,7 +151,8 @@ private fun SupportedHealthConnectScreen(
                 permissionDenied = false
                 permissionLauncher.launch(setOf(viewModel.exerciseReadPermission))
             } catch (error: Exception) {
-                viewModel.showError(error.message ?: "Unable to request permission")
+                // Do not display raw platform/provider exceptions in the permission UI.
+                viewModel.showError("Unable to request permission")
             }
         },
         permissionDenied = permissionDenied,
