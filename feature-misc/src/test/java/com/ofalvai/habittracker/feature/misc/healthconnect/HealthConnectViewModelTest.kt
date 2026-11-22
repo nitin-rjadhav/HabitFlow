@@ -269,6 +269,81 @@ class HealthConnectViewModelTest {
         verifyNoInteractions(reader)
     }
 
+    @Test fun unavailableProviderWithMappingNeverReadsOrWrites() = runTest {
+        for (providerStatus in listOf(
+            HealthConnectStatus.Unavailable,
+            HealthConnectStatus.SetupRequired
+        )) {
+            val gateway = mock<HealthConnectGateway>()
+            given(gateway.status()).willReturn(providerStatus)
+            val viewModel = viewModel(gateway)
+            val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 30, "UTC")
+            given(mappingDao.observeMappings()).willReturn(flowOf(listOf(mapping)))
+
+            viewModel.refresh()
+            advanceUntilIdle()
+            assertEquals(providerStatus, viewModel.status.value)
+
+            viewModel.previewToday(42)
+            viewModel.applyPreview(42)
+            viewModel.completeEligibleHabitsToday()
+            advanceUntilIdle()
+
+            assertEquals(providerStatus, viewModel.status.value)
+            assertEquals(ExerciseSyncState.PermissionRequired, viewModel.syncState.value)
+            verify(gateway, never()).hasExerciseReadPermission()
+        }
+        verifyNoInteractions(reader)
+        verifyNoCompletionWrites()
+        verify(syncReceiptStore, never()).write(org.mockito.kotlin.any())
+    }
+
+    @Test fun providerUnavailableAfterEligiblePreviewCannotApplyStaleCandidate() = runTest {
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(
+            HealthConnectStatus.Ready, HealthConnectStatus.Unavailable
+        )
+        val clock = mock<HealthConnectTimeSource>()
+        val now = Instant.parse("2026-11-21T10:00:00Z")
+        given(clock.now()).willReturn(now)
+        val day = LocalDate.of(2026, 11, 21)
+        val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 20, "UTC")
+        val start = day.atTime(12, 0).atZone(ZoneId.of("UTC")).toInstant()
+        val viewModel = viewModel(gateway, clock)
+        given(mappingDao.getMapping(42)).willReturn(mapping)
+        given(habitDao.getActionsForHabit(42)).willReturn(emptyList())
+        given(reader.readMappedDay(mapping, day)).willReturn(
+            ExerciseSessionReadResult.Success(listOf(
+                ExerciseSession(
+                    "synthetic-session", ExerciseKind.RUNNING,
+                    start, start.plus(Duration.ofMinutes(30))
+                )
+            ))
+        )
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.previewToday(42)
+        advanceUntilIdle()
+        assertEquals(
+            ExercisePreviewState.Result(42, 30, 1, true, false),
+            viewModel.preview.value
+        )
+
+        // A provider removal or service unavailability invalidates any prior Apply.
+        viewModel.refresh()
+        advanceUntilIdle()
+        assertEquals(HealthConnectStatus.Unavailable, viewModel.status.value)
+        assertNull(viewModel.preview.value)
+        viewModel.applyPreview(42)
+        advanceUntilIdle()
+
+        verify(reader).readMappedDay(mapping, day)
+        verify(gateway, never()).hasExerciseReadPermission()
+        verifyNoCompletionWrites()
+        verify(syncReceiptStore, never()).write(org.mockito.kotlin.any())
+    }
+
     private fun previewThenApplyWithAdvancingClock(
         previewAt: Instant,
         finalCheckAt: Instant
