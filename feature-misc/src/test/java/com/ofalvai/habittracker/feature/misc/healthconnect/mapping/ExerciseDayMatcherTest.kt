@@ -231,6 +231,39 @@ class ExerciseDayMatcherTest {
         assertTrue(result.supportingRecordIds.isEmpty())
     }
 
+
+    @Test fun crossingLocalMidnightCountsOnlySelectedDayAndUnionsOverlappingSources() {
+        val india = ZoneId.of("Asia/Kolkata")
+        val selected = LocalDate.of(2026, 11, 21)
+        val records = listOf(
+            // 23:50-00:20 IST: only 20 minutes belong to the selected date.
+            session("watch", "2026-11-20T18:20:00Z", "2026-11-20T18:50:00Z"),
+            // 00:10-00:40 IST: overlaps the first source by ten minutes.
+            session("phone", "2026-11-20T18:40:00Z", "2026-11-20T19:10:00Z")
+        )
+        for (ordered in listOf(records, records.reversed())) {
+            val result = matchExerciseDay(
+                ExerciseHabitMapping(42, ExerciseKind.RUNNING, 40),
+                ordered, selected, india, false
+            )
+            assertTrue(result.eligible)
+            assertEquals(Duration.ofMinutes(40), result.totalDuration)
+            assertEquals(setOf("watch", "phone"), result.supportingRecordIds)
+        }
+    }
+
+    @Test fun crossingLocalMidnightDoesNotCountPreviousDayTowardThreshold() {
+        val india = ZoneId.of("Asia/Kolkata")
+        val result = matchExerciseDay(
+            ExerciseHabitMapping(42, ExerciseKind.RUNNING, 21),
+            listOf(session("watch", "2026-11-20T18:20:00Z", "2026-11-20T18:50:00Z")),
+            LocalDate.of(2026, 11, 21), india, false
+        )
+        assertFalse(result.eligible)
+        assertEquals(Duration.ofMinutes(20), result.totalDuration)
+        assertEquals(setOf("watch"), result.supportingRecordIds)
+    }
+
     @Test fun validatesUserSelectedMapping() {
         assertThrows(IllegalArgumentException::class.java) {
             ExerciseHabitMapping(0, ExerciseKind.RUNNING, 30)
