@@ -1,7 +1,6 @@
 package com.ofalvai.habittracker.feature.dashboard.ui.habitdetail
 
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
