@@ -17,7 +17,7 @@ dependencyanalysis = "com.autonomousapps.dependency-analysis:1.25.0"
 
 [libraries]
 gradle-android-desugar = "com.android.tools:desugar_jdk_libs:2.0.4"
-gradle-android-plugin = "com.android.tools.build:gradle:8.5.1"
+gradle-android-plugin = "com.android.tools.build:gradle:8.9.2"
 
 kotlin-gradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
@@ -31,6 +31,7 @@ hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hil
 hilt-navigation-compose = "androidx.hilt:hilt-navigation-compose:1.0.0"
 hilt-testing = { module = "com.google.dagger:hilt-android-testing", version.ref = "hilt" }
 
+androidx-health-connect-client = "androidx.health.connect:connect-client:1.1.0"
 androidx-navigation-compose = "androidx.navigation:navigation-compose:2.7.7"
 androidx-activity-compose = "androidx.activity:activity-compose:1.8.0"
 

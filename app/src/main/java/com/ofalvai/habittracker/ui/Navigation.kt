@@ -143,6 +143,12 @@ object Destination {
         fun buildRoute(habitId: Int) = "habit_details/$habitId"
     }
 
+    object HealthConnect : Screen(
+        route = "health_connect",
+        enterTransition = { AppTransition.sharedZAxisEnterForward },
+        exitTransition = { AppTransition.sharedZAxisExitBackward }
+    )
+
     object Licenses : Screen(
         route = "licenses"
     )

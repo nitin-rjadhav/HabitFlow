@@ -55,6 +55,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel,
     navigateBack: () -> Unit,
     navigateToLicenses: () -> Unit,
+    navigateToHealthConnect: () -> Unit,
     debugSettings: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -84,6 +85,7 @@ fun SettingsScreen(
         onPrivacyClick,
         onCrashReportingChange,
         onDynamicColorChange,
+        navigateToHealthConnect,
         debugSettings
     )
 }
@@ -101,6 +103,7 @@ fun SettingsScreen(
     onPrivacyClick: () -> Unit,
     onCrashReportingChange: (Boolean) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onHealthConnectClick: () -> Unit,
     debugSettings: @Composable () -> Unit
 ) {
     Column(
@@ -124,6 +127,12 @@ fun SettingsScreen(
                     onCheckedChange = onDynamicColorChange
                 )
             }
+
+            SettingHeader(name = stringResource(R.string.settings_header_connections))
+            NavigationSetting(
+                name = stringResource(R.string.health_connect_title),
+                onClick = onHealthConnectClick
+            )
 
             SettingHeader(name = stringResource(R.string.settings_header_about))
             TextRow(
@@ -246,6 +255,7 @@ fun PreviewSettingsScreen() {
             onRateClick = {},
             onCrashReportingChange = {},
             onDynamicColorChange = {},
+            onHealthConnectClick = {},
             debugSettings = {}
         )
     }
