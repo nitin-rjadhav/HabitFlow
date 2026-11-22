@@ -27,11 +27,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -69,7 +71,8 @@ internal fun HabitDetailHeader(
     scrollState: ScrollState,
     onBack: () -> Unit,
     onSave: (Habit) -> Unit,
-    onArchive: (Habit) -> Unit
+    onArchive: (Habit) -> Unit,
+    onDelete: (Habit) -> Unit
 ) {
     var isEditing by remember { mutableStateOf(false) }
 
@@ -104,7 +107,8 @@ internal fun HabitDetailHeader(
                             isEditing = false
                             onSave(it)
                         },
-                        onArchive = onArchive
+                        onArchive = onArchive,
+                        onDelete = onDelete
                     )
                 }
 
@@ -127,7 +131,8 @@ private fun HabitHeaderEditingContent(
     habitDetails: HabitWithActions,
     onBack: () -> Unit,
     onSave: (Habit) -> Unit,
-    onArchive: (Habit) -> Unit
+    onArchive: (Habit) -> Unit,
+    onDelete: (Habit) -> Unit
 ) {
     var editingName by remember(habitDetails.habit.name) {
         mutableStateOf(habitDetails.habit.name)
@@ -181,6 +186,19 @@ private fun HabitHeaderEditingContent(
             color = editingColor,
             onColorPick = { editingColor = it }
         )
+        // Destructive action is visually distinct from the non-destructive Archive.
+        OutlinedButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 8.dp)
+                .heightIn(min = AppDimensions.minTouchTarget),
+            onClick = { onDelete(habitDetails.habit) },
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Text(stringResource(R.string.habitdetails_delete_action))
+        }
     }
 }
 
