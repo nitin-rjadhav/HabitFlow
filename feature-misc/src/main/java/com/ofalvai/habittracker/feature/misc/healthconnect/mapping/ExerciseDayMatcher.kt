@@ -67,7 +67,10 @@ fun matchExerciseDay(
         // not hide a later valid record with the same provider identity.
         .filter { it.providerRecordId.isNotBlank() &&
             it.kind == mapping.exerciseKind &&
-            it.endsAt.isAfter(it.startsAt)
+            it.endsAt.isAfter(it.startsAt) &&
+            // Exclude out-of-day records before deduplication. Otherwise a
+            // stale record with the same provider ID can hide today's session.
+            it.endsAt.isAfter(start) && it.startsAt.isBefore(end)
         }
         .distinctBy { it.providerRecordId }) {
 
