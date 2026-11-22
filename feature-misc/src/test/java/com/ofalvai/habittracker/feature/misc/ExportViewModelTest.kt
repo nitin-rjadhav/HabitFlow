@@ -257,6 +257,45 @@ class ExportViewModelTest {
     }
 
     @Test
+    fun `Committed ZIP restore is not reported as failed when receipt cleanup throws`() = runTest {
+        val streamOpener = object : StreamOpener {
+            override fun openInputStream(uri: URI): InputStream {
+                val content = BackupContent(
+                    habitsCSV = CSVHandler.exportHabitList(emptyList()).toString(),
+                    actionsCSV = CSVHandler.exportActionList(emptyList()).toString(),
+                    metadata = BackupContent.Metadata(backupVersion = 1)
+                )
+                val output = ByteArrayOutputStream()
+                ArchiveHandler.writeBackup(output, content)
+                return ByteArrayInputStream(output.toByteArray())
+            }
+
+            override fun openOutputStream(uri: URI): OutputStream = ByteArrayOutputStream()
+        }
+        org.mockito.kotlin.doThrow(IllegalStateException("simulated preference failure"))
+            .whenever(syncReceiptStore).clear()
+        val model = viewModel(streamOpener)
+        val uri = URI.create("mock")
+
+        model.importState.test {
+            assertEquals(ImportState(null, null, null), awaitItem())
+            model.importFromFile(uri)
+            assertEquals(
+                ImportState(uri, DataSummary(0, 0, null), null),
+                awaitItem()
+            )
+            model.onRestoreBackup(uri)
+            // The transactional database restore succeeded despite metadata
+            // cleanup failure; never present an incorrect import error.
+            assertEquals(ImportState(null, null, null), awaitItem())
+            ensureAllEventsConsumed()
+        }
+        org.mockito.kotlin.verify(dao).restoreBackup(emptyList(), emptyList())
+        org.mockito.kotlin.verify(syncReceiptStore).clear()
+        org.mockito.kotlin.verify(telemetry).logNonFatal(org.mockito.kotlin.any())
+    }
+
+    @Test
     fun `Restoring unsupported backup version does not erase habits or sync receipt`() = runTest {
         val streamOpener = object : StreamOpener {
             override fun openInputStream(uri: URI): InputStream {
