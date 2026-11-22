@@ -147,6 +147,31 @@ class ExerciseDayMatcherTest {
         assertEquals(Duration.ofMinutes(30), result.totalDuration)
     }
 
+    @Test fun outOfDayDuplicateDoesNotHideTodaysMatchingSession() {
+        val result = matchExerciseDay(
+            running,
+            listOf(
+                session("same", "2026-11-20T10:00:00Z", "2026-11-20T11:00:00Z"),
+                session("same", "2026-11-21T10:00:00Z", "2026-11-21T10:30:00Z")
+            ), day, utc, false
+        )
+        assertTrue(result.eligible)
+        assertEquals(Duration.ofMinutes(30), result.totalDuration)
+        assertEquals(setOf("same"), result.supportingRecordIds)
+    }
+
+    @Test fun dstFallBackCountsRepeatedHourAsRealElapsedTime() {
+        val ny = ZoneId.of("America/New_York")
+        val fallBackDay = LocalDate.of(2026, 11, 1)
+        val result = matchExerciseDay(
+            ExerciseHabitMapping(42, ExerciseKind.RUNNING, 90),
+            listOf(session("fall-back", "2026-11-01T05:30:00Z", "2026-11-01T07:00:00Z")),
+            fallBackDay, ny, false
+        )
+        assertTrue(result.eligible)
+        assertEquals(Duration.ofMinutes(90), result.totalDuration)
+    }
+
     @Test fun validatesUserSelectedMapping() {
         assertThrows(IllegalArgumentException::class.java) {
             ExerciseHabitMapping(0, ExerciseKind.RUNNING, 30)
