@@ -21,6 +21,7 @@ import androidx.lifecycle.viewModelScope
 import com.ofalvai.habittracker.core.common.OnboardingManager
 import com.ofalvai.habittracker.core.common.Telemetry
 import com.ofalvai.habittracker.core.database.HabitDao
+import com.ofalvai.habittracker.core.database.entity.HabitById
 import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.model.Habit
 import com.ofalvai.habittracker.core.model.HabitWithActions
@@ -55,7 +56,8 @@ private val initialSingleStats = SingleStats(null, 0, 0, 0f)
 private val initialChartData = ActionCountChart(persistentListOf(), ActionCountChart.Type.Weekly)
 
 enum class HabitDetailEvent {
-    BackNavigation
+    BackNavigation,
+    DeleteError
 }
 
 @HiltViewModel
@@ -150,6 +152,19 @@ class HabitDetailViewModel @Inject constructor(
         viewModelScope.launch {
             dao.updateHabit(habit.toEntity(order = habitOrder ?: 0, archived = true))
             eventChannel.send(HabitDetailEvent.BackNavigation)
+        }
+    }
+
+    /** Delete the habit and all dependent actions/provenance; navigate only on success. */
+    fun deleteHabit(habit: Habit) {
+        viewModelScope.launch {
+            try {
+                dao.deleteHabit(HabitById(habit.id))
+                eventChannel.send(HabitDetailEvent.BackNavigation)
+            } catch (e: Exception) {
+                telemetry.logNonFatal(e)
+                eventChannel.send(HabitDetailEvent.DeleteError)
+            }
         }
     }
 
