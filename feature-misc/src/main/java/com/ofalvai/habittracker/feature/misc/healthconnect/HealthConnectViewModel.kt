@@ -324,7 +324,7 @@ class HealthConnectViewModel @Inject constructor(
                             continue
                         }
                         val zone = ZoneId.of(mapping.zoneId)
-                        val today = LocalDate.now(zone)
+                        val today = timeSource.now().atZone(zone).toLocalDate()
                         when (val read = exerciseReader.readMappedDay(mapping, today)) {
                             ExerciseSessionReadResult.PermissionRequired -> {
                                 _status.value = HealthConnectStatus.PermissionRequired
@@ -348,7 +348,7 @@ class HealthConnectViewModel @Inject constructor(
                                     continue
                                 }
                                 // Do not apply records across local midnight.
-                                if (LocalDate.now(zone) != today) {
+                                if (timeSource.now().atZone(zone).toLocalDate() != today) {
                                     failed++
                                     continue
                                 }
@@ -356,6 +356,12 @@ class HealthConnectViewModel @Inject constructor(
                                     _status.value = HealthConnectStatus.PermissionRequired
                                     _syncState.value = ExerciseSyncState.PermissionRequired
                                     return@launch
+                                }
+                                // The suspending permission check above may cross
+                                // midnight. Never write a now-stale local-day Action.
+                                if (timeSource.now().atZone(zone).toLocalDate() != today) {
+                                    failed++
+                                    continue
                                 }
                                 when (autoCompletionDao.applyEligibleDay(
                                     mapping, today, match.totalDuration, match.supportingRecordIds

@@ -24,6 +24,7 @@ import com.ofalvai.habittracker.core.database.entity.Action
 import com.ofalvai.habittracker.core.database.entity.Habit
 import com.ofalvai.habittracker.core.testing.MainCoroutineRule
 import com.ofalvai.habittracker.feature.misc.export.*
+import com.ofalvai.habittracker.feature.misc.healthconnect.ExerciseSyncReceiptStore
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -44,6 +45,7 @@ class ExportViewModelTest {
 
     private val dao = mock<HabitDao>()
     private val telemetry = mock<Telemetry>()
+    private val syncReceiptStore = mock<ExerciseSyncReceiptStore>()
 
     @get:Rule
     var mainCoroutineRule = MainCoroutineRule()
@@ -251,11 +253,47 @@ class ExportViewModelTest {
 
             ensureAllEventsConsumed()
         }
+        org.mockito.kotlin.verify(syncReceiptStore).clear()
+    }
+
+    @Test
+    fun `Restoring unsupported backup version does not erase habits or sync receipt`() = runTest {
+        val streamOpener = object : StreamOpener {
+            override fun openInputStream(uri: URI): InputStream {
+                val contents = BackupContent(
+                    habitsCSV = CSVHandler.exportHabitList(emptyList()).toString(),
+                    actionsCSV = CSVHandler.exportActionList(emptyList()).toString(),
+                    metadata = BackupContent.Metadata(backupVersion = 74)
+                )
+                val output = ByteArrayOutputStream()
+                ArchiveHandler.writeBackup(output, contents)
+                return ByteArrayInputStream(output.toByteArray())
+            }
+
+            override fun openOutputStream(uri: URI): OutputStream = ByteArrayOutputStream()
+        }
+        val model = viewModel(streamOpener)
+        val uri = URI.create("mock")
+
+        model.importState.test {
+            assertEquals(ImportState(null, null, null), awaitItem())
+            model.onRestoreBackup(uri)
+            assertEquals(
+                ImportState(uri, null, ExportImportError.BackupVersionTooHigh),
+                awaitItem()
+            )
+            ensureAllEventsConsumed()
+        }
+        org.mockito.kotlin.verify(dao, org.mockito.kotlin.never()).restoreBackup(
+            org.mockito.kotlin.any(), org.mockito.kotlin.any()
+        )
+        org.mockito.kotlin.verify(syncReceiptStore, org.mockito.kotlin.never()).clear()
     }
 
     private fun viewModel(streamOpener: StreamOpener = mock()) = ExportViewModel(
         streamOpener = streamOpener,
         habitDao = dao,
-        telemetry = telemetry
+        telemetry = telemetry,
+        syncReceiptStore = syncReceiptStore
     )
 }

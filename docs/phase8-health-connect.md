@@ -36,6 +36,21 @@ Status: Phase 8.1 and 8.2 were merged to `main` via PR #17 then PR #18 on 22 Nov
 - [x] Add manual refresh (existing Check again) and mapping disconnect controls, retaining previously applied Actions and local undo ledger while deleting mappings/source IDs. OS-level Health Connect permission must be revoked separately in Android settings.
 - [ ] Complete regression testing including no-Health-Connect installs. Emulator UI smoke now checks the new Settings completion history heading.
 
+## Manual ZIP backup scope (release disclosure)
+
+The existing Backup and Restore screen exports a ZIP containing only `habits.csv`,
+`actions.csv` and `metadata.txt` (backup format version 1). Its restore path
+recreates habit definitions and completion timestamps, not Health Connect
+exercise mappings, source-record identities, automatic-completion ledger /
+provenance, last-sync receipts, or user-deleted auto-completion tombstones.
+
+The export/import UI must communicate this explicitly. After restoring the ZIP,
+exercise-related links and undo safeguards must not be assumed to survive;
+users should review restored completions before manually reconfiguring Health
+Connect. This disclosure concerns the **manual ZIP** feature, not Android's
+separate system backup mechanism. Do not silently expand CSV/ZIP backup contents
+to include sensitive exercise source IDs without a separate privacy review.
+
 ## Phase 8 on-device acceptance checklist
 
 These tests require a **real Android device** with Health Connect and consented test
