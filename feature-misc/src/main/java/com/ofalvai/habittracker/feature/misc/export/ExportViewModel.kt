@@ -157,7 +157,14 @@ class ExportViewModel @Inject constructor(
                 habitDao.restoreBackup(backup.habits, backup.actions)
                 // Manual ZIP backups omit Health Connect sync receipts. Keeping the
                 // old receipt would misrepresent syncs from the restored database.
-                syncReceiptStore.clear()
+                // The database transaction has already committed. If
+                // best-effort metadata cleanup fails, preserve the truthful
+                // restore-success state rather than reporting a false rollback.
+                try {
+                    syncReceiptStore.clear()
+                } catch (receiptError: Exception) {
+                    telemetry.logNonFatal(receiptError)
+                }
                 importState.value = ImportState(backupFileURI = null, backupSummary = null, error = null)
             } catch (e: Exception) {
                 telemetry.logNonFatal(e)
