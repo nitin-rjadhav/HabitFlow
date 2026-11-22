@@ -84,15 +84,38 @@ def screenshot(path):
     (OUT / path).write_bytes(img)
 
 
+def assert_no_unprompted_health_permission():
+    """An app launch must not surface the Health Connect grant dialog."""
+    visible = nodes()
+    unexpected = (
+        "Allow HabitFlow to access",
+        "Choose data to share with HabitFlow",
+        "Grant read-only access",
+    )
+    for phrase in unexpected:
+        if any(match(item, phrase, exact=False) for item in visible):
+            raise RuntimeError(f"Unexpected Health Connect permission UI on launch: {phrase}")
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     adb("shell", "am", "force-stop", PACKAGE)
     adb("shell", "monkey", "-p", PACKAGE, "-c",
         "android.intent.category.LAUNCHER", "1")
+    locate("More")
+    assert_no_unprompted_health_permission()
     tap("More")
     tap("Settings")
     tap("Health Connect")
     locate("Optionally allow HabitFlow", exact=False)
+    # A fresh install with no mappings must not offer a grant action. The
+    # missing-provider state must remain usable without granting access.
+    visible = nodes()
+    if any(match(item, "Save a habit mapping below", exact=False) for item in visible):
+        if any(match(item, "Grant read-only access", exact=True) for item in visible):
+            raise RuntimeError("Health permission grant offered before mapping opt-in")
+    if any(match(item, "Health Connect is unavailable", exact=False) for item in visible):
+        locate("continue tracking habits manually", exact=False)
     locate_scrolling("HabitFlow requests only exercise-session read access.", exact=False)
     locate_scrolling("Exercise completion history", exact=True)
     screenshot("health-connect-settings.png")
