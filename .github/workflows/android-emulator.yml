@@ -2,6 +2,9 @@ name: Android emulator smoke tests
 
 on:
   workflow_dispatch:
+  # Verify merged code, not only pre-merge PR heads.
+  push:
+    branches: [main, develop]
   pull_request:
     branches: [main, develop]
 
