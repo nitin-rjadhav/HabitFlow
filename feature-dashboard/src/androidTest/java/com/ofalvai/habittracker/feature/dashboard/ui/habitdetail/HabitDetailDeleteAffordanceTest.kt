@@ -1,6 +1,10 @@
 package com.ofalvai.habittracker.feature.dashboard.ui.habitdetail
 
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -65,4 +69,43 @@ class HabitDetailDeleteAffordanceTest {
         compose.onNodeWithText("Delete habit permanently").performClick()
         compose.runOnIdle { assertEquals(habit, selected) }
     }
+    @Test fun cancelConfirmationPreservesHabitAndDoesNotDelete() {
+        var deleteCount = 0
+        compose.setContent {
+            var pending by remember { mutableStateOf<Habit?>(habit) }
+            PreviewTheme {
+                DeleteHabitConfirmationDialog(
+                    habit = pending,
+                    onDismiss = { pending = null },
+                    onConfirm = { deleteCount++ }
+                )
+            }
+        }
+        compose.onNodeWithText("Delete “Morning run” and all its completion history? This cannot be undone. Archive keeps your history instead.")
+            .assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Delete forever").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(0, deleteCount) }
+    }
+
+    @Test fun confirmDeletionInvokesCallbackForSelectedHabitOnly() {
+        var deleted: Habit? = null
+        compose.setContent {
+            var pending by remember { mutableStateOf<Habit?>(habit) }
+            PreviewTheme {
+                DeleteHabitConfirmationDialog(
+                    habit = pending,
+                    onDismiss = { pending = null },
+                    onConfirm = {
+                        deleted = it
+                        pending = null
+                    }
+                )
+            }
+        }
+        compose.onNodeWithText("Delete forever").performClick()
+        compose.onNodeWithText("Delete forever").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(habit, deleted) }
+    }
+
 }
