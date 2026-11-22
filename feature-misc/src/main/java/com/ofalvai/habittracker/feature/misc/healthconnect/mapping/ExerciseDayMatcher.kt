@@ -62,7 +62,7 @@ fun matchExerciseDay(
 
     // A single exercise can be present in more than one app with different
     // provider IDs. Count overlapping wall-clock time only once.
-    for (session in sessions.asSequence()
+    val validSessions = sessions.asSequence()
         // Validate before deduplication: a malformed or unrelated record must
         // not hide a later valid record with the same provider identity.
         .filter { it.providerRecordId.isNotBlank() &&
@@ -72,7 +72,16 @@ fun matchExerciseDay(
             // stale record with the same provider ID can hide today's session.
             it.endsAt.isAfter(start) && it.startsAt.isBefore(end)
         }
-        .distinctBy { it.providerRecordId }) {
+        // A provider ID may occur in conflicting records. Prefer the longest
+        // valid in-day interval rather than whichever duplicate arrived first.
+        // This makes matching independent of provider pagination order.
+        .groupBy { it.providerRecordId }
+        .values.map { duplicates ->
+            duplicates.maxWithOrNull(compareBy<ExerciseSession> {
+                Duration.between(maxOf(it.startsAt, start), minOf(it.endsAt, end))
+            }.thenBy { it.startsAt }.thenBy { it.endsAt })!!
+        }
+    for (session in validSessions) {
 
         val intersectionStart = maxOf(session.startsAt, start)
         val intersectionEnd = minOf(session.endsAt, end)
