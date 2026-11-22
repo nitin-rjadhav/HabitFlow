@@ -134,19 +134,12 @@ fun HabitDetailScreen(
     )
 
     var pendingHabitToDelete by remember { mutableStateOf<Habit?>(null) }
-    ConfirmationDialog(
-        showDialog = pendingHabitToDelete != null,
-        title = stringResource(R.string.habitdetails_delete_title),
-        description = stringResource(
-            R.string.habitdetails_delete_description,
-            pendingHabitToDelete?.name.orEmpty()
-        ),
-        confirmText = stringResource(R.string.habitdetails_delete_confirm),
+    DeleteHabitConfirmationDialog(
+        habit = pendingHabitToDelete,
         onDismiss = { pendingHabitToDelete = null },
-        onConfirm = {
-            val habit = pendingHabitToDelete
+        onConfirm = { habit ->
             pendingHabitToDelete = null
-            if (habit != null) viewModel.deleteHabit(habit)
+            viewModel.deleteHabit(habit)
         }
     )
     if (showDeleteError) {
@@ -172,6 +165,29 @@ fun HabitDetailScreen(
         onArchive = onArchive,
         onDelete = { pendingHabitToDelete = it },
         onDayToggle = onDayToggle
+    )
+}
+
+/**
+ * Kept separate from the ViewModel so destructive confirmation and cancellation
+ * can be verified with synthetic habits in isolated Compose instrumentation tests.
+ */
+@Composable
+internal fun DeleteHabitConfirmationDialog(
+    habit: Habit?,
+    onDismiss: () -> Unit,
+    onConfirm: (Habit) -> Unit
+) {
+    ConfirmationDialog(
+        showDialog = habit != null,
+        title = stringResource(R.string.habitdetails_delete_title),
+        description = stringResource(
+            R.string.habitdetails_delete_description,
+            habit?.name.orEmpty()
+        ),
+        confirmText = stringResource(R.string.habitdetails_delete_confirm),
+        onDismiss = onDismiss,
+        onConfirm = { habit?.let(onConfirm) }
     )
 }
 
