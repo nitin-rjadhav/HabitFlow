@@ -24,6 +24,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.given
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 
@@ -36,12 +37,15 @@ class HealthConnectViewModelTest {
     private val autoCompletionDao = mock<ExerciseAutoCompletionDao>()
     private val syncReceiptStore = mock<ExerciseSyncReceiptStore>()
 
-    private fun viewModel(gateway: HealthConnectGateway = mock()): HealthConnectViewModel {
+    private fun viewModel(
+        gateway: HealthConnectGateway = mock(),
+        timeSource: HealthConnectTimeSource = HealthConnectTimeSource()
+    ): HealthConnectViewModel {
         given(autoCompletionDao.observeRecentHistory()).willReturn(flowOf(emptyList()))
         given(mappingDao.observeMappings()).willReturn(flowOf(emptyList()))
         given(habitDao.getActiveHabitsWithActions()).willReturn(flowOf(emptyList()))
         return HealthConnectViewModel(
-            gateway, habitDao, mappingDao, reader, autoCompletionDao, syncReceiptStore
+            gateway, habitDao, mappingDao, reader, autoCompletionDao, syncReceiptStore, timeSource
         )
     }
 
@@ -263,6 +267,109 @@ class HealthConnectViewModelTest {
             viewModel.preview.value
         )
         verifyNoInteractions(reader)
+    }
+
+    private fun previewThenApplyWithAdvancingClock(
+        previewAt: Instant,
+        finalCheckAt: Instant
+    ) = runTest {
+        val zone = ZoneId.of("UTC")
+        val day = previewAt.atZone(zone).toLocalDate()
+        // The system clock is deliberately simulated, so the test does not need
+        // to wait for local midnight or 15 actual minutes.
+        val clock = mock<HealthConnectTimeSource>()
+        given(clock.now()).willReturn(previewAt, previewAt, previewAt, finalCheckAt)
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 20, "UTC")
+        val start = day.atTime(12, 0).atZone(zone).toInstant()
+        val viewModel = viewModel(gateway, clock)
+        given(mappingDao.getMapping(42)).willReturn(mapping)
+        given(habitDao.getActionsForHabit(42)).willReturn(emptyList())
+        given(reader.readMappedDay(mapping, day)).willReturn(
+            ExerciseSessionReadResult.Success(
+                listOf(ExerciseSession(
+                    "run-1", ExerciseKind.RUNNING,
+                    start, start.plus(Duration.ofMinutes(30))
+                ))
+            )
+        )
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.previewToday(42)
+        advanceUntilIdle()
+        assertEquals(
+            ExercisePreviewState.Result(42, 30, 1, true, false),
+            viewModel.preview.value
+        )
+
+        viewModel.applyPreview(42)
+        advanceUntilIdle()
+
+        assertEquals(
+            ExerciseApplyState.Error(
+                "Exercise preview expired or the local day changed. Preview today again."
+            ),
+            viewModel.applyState.value
+        )
+        assertNull(viewModel.preview.value)
+        verifyNoCompletionWrites()
+        verify(gateway).hasExerciseReadPermission()
+    }
+
+    @Test fun previewCannotApplyIfFifteenMinuteTtlExpiresDuringPermissionCheck() {
+        val previewAt = Instant.parse("2026-11-21T10:00:00Z")
+        previewThenApplyWithAdvancingClock(
+            previewAt, previewAt.plus(Duration.ofMinutes(16))
+        )
+    }
+
+    @Test fun previewCannotApplyIfMidnightPassesDuringPermissionCheck() {
+        val previewAt = Instant.parse("2026-11-21T23:59:00Z")
+        previewThenApplyWithAdvancingClock(
+            previewAt, previewAt.plus(Duration.ofMinutes(2))
+        )
+    }
+
+    @Test fun freshPreviewStillAppliesAfterPermissionRecheck() = runTest {
+        val zone = ZoneId.of("UTC")
+        val day = LocalDate.of(2026, 11, 21)
+        val now = Instant.parse("2026-11-21T10:00:00Z")
+        val clock = mock<HealthConnectTimeSource>()
+        given(clock.now()).willReturn(now)
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 20, "UTC")
+        val start = day.atTime(12, 0).atZone(zone).toInstant()
+        val viewModel = viewModel(gateway, clock)
+        given(mappingDao.getMapping(42)).willReturn(mapping)
+        given(habitDao.getActionsForHabit(42)).willReturn(emptyList())
+        given(reader.readMappedDay(mapping, day)).willReturn(
+            ExerciseSessionReadResult.Success(
+                listOf(ExerciseSession(
+                    "run-1", ExerciseKind.RUNNING,
+                    start, start.plus(Duration.ofMinutes(30))
+                ))
+            )
+        )
+        given(autoCompletionDao.applyEligibleDay(
+            mapping, day, Duration.ofMinutes(30), setOf("run-1")
+        )).willReturn(ExerciseApplyResult.Applied(23))
+
+        viewModel.refresh()
+        advanceUntilIdle()
+        viewModel.previewToday(42)
+        advanceUntilIdle()
+        viewModel.applyPreview(42)
+        advanceUntilIdle()
+
+        assertEquals(ExerciseApplyState.Saved, viewModel.applyState.value)
+        verify(autoCompletionDao).applyEligibleDay(
+            mapping, day, Duration.ofMinutes(30), setOf("run-1")
+        )
     }
 
     @Test fun oneTimeSyncWithoutPermissionDoesNotReadOrWrite() = runTest {
