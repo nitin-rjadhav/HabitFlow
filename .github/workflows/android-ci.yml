@@ -7,6 +7,13 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+
+# A new push supersedes older builds of the same branch. PR checks retain
+# separate groups so independent feature branches never cancel each other.
+# Keep the latest main CI as an explicit release verification gate.
+concurrency:
+  group: habitflow-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   android:
     runs-on: ubuntu-latest
