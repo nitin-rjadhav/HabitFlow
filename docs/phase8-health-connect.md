@@ -91,3 +91,6 @@ Both Android cloud build/unit and emulator smoke workflows passed on `d8262e` (r
 
 ### 22 Nov persisted mapping validation checkpoint
 Both Android build/unit and emulator workflows passed on `99e5648` (runs 44952585831 and 44952585855). Commit `8a116dc` now rejects unsupported or corrupted persisted exercise kinds before calling the Health Connect records API, avoiding unnecessary reads. Commit `9ab3fcc` extends mapping parsing regression coverage to real newline and tab control characters (rather than only a literal backslash-n sequence). These new commits need their own CI verification. Device grant/deny/revoke and TalkBack testing remain pending. Both PRs remain draft and unmerged.
+
+### 22 Nov out-of-day duplicate and DST regression checkpoint
+Commit `fe03eaa` filters exercise sessions outside the requested local day **before** deduplicating provider IDs. Previously, an older out-of-day session with the same ID could suppress a later valid in-day session. Commit `36ec79f` adds a regression test for that case and a DST fall-back repeated-hour duration test. These commits are pushed to draft PR #18; fresh Android build/unit and emulator CI results have not yet been confirmed. Device permission grant/deny/revoke and TalkBack validation remain outstanding. Do not merge PR #17 or #18 without explicit authorization.
