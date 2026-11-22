@@ -429,6 +429,43 @@ class HealthConnectViewModelTest {
         )
     }
 
+    @Test fun oneTimeSyncCrossingMidnightDuringPermissionCheckNeverWrites() = runTest {
+        val zone = ZoneId.of("Asia/Kolkata")
+        val beforeMidnight = Instant.parse("2026-11-21T18:29:00Z") // 23:59 IST
+        val afterMidnight = Instant.parse("2026-11-21T18:31:00Z") // 00:01 IST
+        val day = beforeMidnight.atZone(zone).toLocalDate()
+        val clock = mock<HealthConnectTimeSource>()
+        // Read day, check after exercise read, then check after permission await.
+        given(clock.now()).willReturn(beforeMidnight, beforeMidnight, afterMidnight)
+        val gateway = mock<HealthConnectGateway>()
+        given(gateway.status()).willReturn(HealthConnectStatus.Ready)
+        given(gateway.hasExerciseReadPermission()).willReturn(true)
+        val mapping = ExerciseHabitMappingEntity(42, "RUNNING", 20, zone.id)
+        val start = day.atTime(12, 0).atZone(zone).toInstant()
+        given(mappingDao.observeMappings()).willReturn(flowOf(listOf(mapping)))
+        given(reader.readMappedDay(mapping, day)).willReturn(
+            ExerciseSessionReadResult.Success(listOf(ExerciseSession(
+                "synthetic-run", ExerciseKind.RUNNING,
+                start, start.plus(Duration.ofMinutes(30))
+            )))
+        )
+        val viewModel = viewModel(gateway, clock)
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        viewModel.completeEligibleHabitsToday()
+        advanceUntilIdle()
+
+        assertEquals(ExerciseSyncState.Finished(0, 0, 1), viewModel.syncState.value)
+        verify(reader).readMappedDay(mapping, day)
+        verifyNoCompletionWrites()
+        verify(syncReceiptStore).write(org.mockito.kotlin.check<ExerciseSyncReceipt> {
+            assertEquals(0, it.applied)
+            assertEquals(0, it.unchanged)
+            assertEquals(1, it.failed)
+        })
+    }
+
     @Test fun oneTimeSyncCountsSuccessIneligibleAndReadFailureIndependently() = runTest {
         val gateway = mock<HealthConnectGateway>()
         given(gateway.status()).willReturn(HealthConnectStatus.Ready)
