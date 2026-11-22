@@ -192,6 +192,45 @@ class ExerciseDayMatcherTest {
         assertEquals(Duration.ofMinutes(30), result.totalDuration)
     }
 
+
+    @Test fun springForwardDayClipsAtNextLocalMidnight() {
+        val zone = ZoneId.of("America/New_York")
+        val date = LocalDate.of(2026, 3, 8)
+        // This calendar day is only 23 hours long, not 24.
+        val result = matchExerciseDay(
+            ExerciseHabitMapping(42, ExerciseKind.RUNNING, 1440),
+            listOf(session("whole-day", "2026-03-08T05:00:00Z", "2026-03-09T04:00:00Z")),
+            date, zone, false
+        )
+        assertFalse(result.eligible)
+        assertEquals(Duration.ofHours(23), result.totalDuration)
+    }
+
+    @Test fun fallBackDayCanContainMoreThanTwentyFourHours() {
+        val zone = ZoneId.of("America/New_York")
+        val date = LocalDate.of(2026, 11, 1)
+        val result = matchExerciseDay(
+            ExerciseHabitMapping(42, ExerciseKind.RUNNING, 1440),
+            listOf(session("whole-day", "2026-11-01T04:00:00Z", "2026-11-02T05:00:00Z")),
+            date, zone, false
+        )
+        assertTrue(result.eligible)
+        assertEquals(Duration.ofHours(25), result.totalDuration)
+    }
+
+    @Test fun sessionsTouchingMidnightWithoutOverlapDoNotContribute() {
+        val result = matchExerciseDay(
+            running,
+            listOf(
+                session("ends-at-start", "2026-11-20T23:00:00Z", "2026-11-21T00:00:00Z"),
+                session("starts-at-end", "2026-11-22T00:00:00Z", "2026-11-22T01:00:00Z")
+            ), day, utc, false
+        )
+        assertFalse(result.eligible)
+        assertEquals(Duration.ZERO, result.totalDuration)
+        assertTrue(result.supportingRecordIds.isEmpty())
+    }
+
     @Test fun validatesUserSelectedMapping() {
         assertThrows(IllegalArgumentException::class.java) {
             ExerciseHabitMapping(0, ExerciseKind.RUNNING, 30)
