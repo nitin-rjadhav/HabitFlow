@@ -121,6 +121,32 @@ class ExerciseDayMatcherTest {
         assertEquals(Duration.ofMinutes(30), result.totalDuration)
     }
 
+
+    @Test fun invalidDuplicateDoesNotHideLaterValidSession() {
+        val result = matchExerciseDay(
+            running,
+            listOf(
+                session("same", "2026-11-21T10:30:00Z", "2026-11-21T10:00:00Z"),
+                session("same", "2026-11-21T10:00:00Z", "2026-11-21T10:30:00Z")
+            ), day, utc, false
+        )
+        assertTrue(result.eligible)
+        assertEquals(Duration.ofMinutes(30), result.totalDuration)
+        assertEquals(setOf("same"), result.supportingRecordIds)
+    }
+
+    @Test fun unrelatedDuplicateDoesNotHideLaterMatchingActivity() {
+        val result = matchExerciseDay(
+            running,
+            listOf(
+                session("same", "2026-11-21T10:00:00Z", "2026-11-21T10:30:00Z", ExerciseKind.WALKING),
+                session("same", "2026-11-21T10:00:00Z", "2026-11-21T10:30:00Z")
+            ), day, utc, false
+        )
+        assertTrue(result.eligible)
+        assertEquals(Duration.ofMinutes(30), result.totalDuration)
+    }
+
     @Test fun validatesUserSelectedMapping() {
         assertThrows(IllegalArgumentException::class.java) {
             ExerciseHabitMapping(0, ExerciseKind.RUNNING, 30)
