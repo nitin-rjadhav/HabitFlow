@@ -143,6 +143,58 @@ class ExerciseAutoCompletionTest : BaseInstrumentedTest() {
         assertTrue(habitDao.getActionsForHabit(42).isEmpty())
     }
 
+    @Test fun manualActionOnPreviousUtcDayBlocksSameLocalDayCompletion() = runTest {
+        setupMapping()
+        // 20:00 UTC on 20 Nov is 01:30 IST on 21 Nov, the mapped local day.
+        habitDao.insertActions(listOf(Action(
+            habit_id = 42, timestamp = Instant.parse("2026-11-20T20:00:00Z")
+        )))
+
+        assertEquals(ExerciseApplyResult.ExistingCompletion, apply())
+        assertEquals(1, habitDao.getActionsForHabit(42).size)
+        assertNull(autoDao.getLedger(42, day.toString()))
+        assertEquals(0, mappingDao.getSourceRecordCount(42))
+    }
+
+    @Test fun manualActionAtNextLocalMidnightDoesNotBlockPreviousDay() = runTest {
+        setupMapping()
+        // 18:30 UTC on 21 Nov is exactly 00:00 IST on 22 Nov.
+        // This manual Action must not suppress an eligible 21 Nov completion.
+        val nextDayManual = Instant.parse("2026-11-21T18:30:00Z")
+        habitDao.insertActions(listOf(Action(habit_id = 42, timestamp = nextDayManual)))
+
+        assertTrue(apply() is ExerciseApplyResult.Applied)
+        val actions = habitDao.getActionsForHabit(42)
+        assertEquals(2, actions.size)
+        assertTrue(actions.any { it.timestamp == nextDayManual })
+        val ledger = autoDao.getLedger(42, day.toString())
+        assertNotNull(ledger)
+        assertEquals(
+            day,
+            actions.single { it.id == ledger!!.actionId }
+                .timestamp.atZone(ZoneId.of(mapping.zoneId)).toLocalDate()
+        )
+    }
+
+    @Test fun undoSuppressionSurvivesDisconnectAndReconnectingSameMapping() = runTest {
+        setupMapping()
+        assertTrue(apply() is ExerciseApplyResult.Applied)
+        val actionId = habitDao.getActionsForHabit(42).single().id
+        habitDao.deleteAction(actionId)
+        val suppressed = autoDao.getLedger(42, day.toString())
+        assertNotNull(suppressed)
+        assertNull(suppressed!!.actionId)
+
+        mappingDao.removeAllMappings()
+        assertEquals(0, mappingDao.getSourceRecordCount(42))
+        // Opting in again must not silently re-create a completion the user undid.
+        mappingDao.upsertMapping(mapping)
+        assertEquals(ExerciseApplyResult.AlreadyProcessed, apply())
+        assertTrue(habitDao.getActionsForHabit(42).isEmpty())
+        assertNull(autoDao.getLedger(42, day.toString())!!.actionId)
+        assertEquals(0, mappingDao.getSourceRecordCount(42))
+    }
+
     @Test fun deletingHabitRemovesLocalLedger() = runTest {
         setupMapping()
         apply()

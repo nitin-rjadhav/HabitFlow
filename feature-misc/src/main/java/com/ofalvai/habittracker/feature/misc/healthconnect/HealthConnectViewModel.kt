@@ -9,6 +9,7 @@ import com.ofalvai.habittracker.core.database.HabitDao
 import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
 import com.ofalvai.habittracker.core.database.entity.ExerciseAutoCompletionLedger
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseHabitMapping
+import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.GENERIC_EXERCISE_READ_ERROR
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.ExerciseSessionReadResult
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.HealthConnectExerciseReader
 import com.ofalvai.habittracker.feature.misc.healthconnect.mapping.matchExerciseDay
@@ -82,7 +83,8 @@ class HealthConnectViewModel @Inject constructor(
     private val mappingDao: ExerciseMappingDao,
     private val exerciseReader: HealthConnectExerciseReader,
     private val autoCompletionDao: ExerciseAutoCompletionDao,
-    private val syncReceiptStore: ExerciseSyncReceiptStore
+    private val syncReceiptStore: ExerciseSyncReceiptStore,
+    private val timeSource: HealthConnectTimeSource
 ) : ViewModel() {
     private val _status = MutableStateFlow<HealthConnectStatus?>(null)
     val status: StateFlow<HealthConnectStatus?> = _status
@@ -179,7 +181,7 @@ class HealthConnectViewModel @Inject constructor(
                         return@launch
                     }
                 val zone = ZoneId.of(saved.zoneId)
-                val today = LocalDate.now(zone)
+                val today = timeSource.now().atZone(zone).toLocalDate()
                 when (val result = exerciseReader.readMappedDay(saved, today)) {
                     ExerciseSessionReadResult.Unavailable ->
                         _preview.value = ExercisePreviewState.Unavailable
@@ -188,7 +190,7 @@ class HealthConnectViewModel @Inject constructor(
                         _status.value = HealthConnectStatus.PermissionRequired
                     }
                     is ExerciseSessionReadResult.Failure ->
-                        _preview.value = ExercisePreviewState.Failure(result.message)
+                        _preview.value = ExercisePreviewState.Failure(GENERIC_EXERCISE_READ_ERROR)
                     is ExerciseSessionReadResult.Success -> {
                         val alreadyCompleted = habitDao.getActionsForHabit(habitId)
                             .any { it.timestamp.atZone(zone).toLocalDate() == today }
@@ -200,7 +202,7 @@ class HealthConnectViewModel @Inject constructor(
                         if (matching.eligible && !alreadyCompleted) {
                             candidate = Candidate(
                                 saved, today, matching.totalDuration,
-                                matching.supportingRecordIds, Instant.now()
+                                matching.supportingRecordIds, timeSource.now()
                             )
                         }
                         _preview.value = ExercisePreviewState.Result(
@@ -215,11 +217,17 @@ class HealthConnectViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _preview.value = ExercisePreviewState.Failure(
-                    error.message ?: "Unable to preview exercise"
-                )
+                _preview.value = ExercisePreviewState.Failure("Unable to preview exercise")
             }
         }
+    }
+
+    private fun expirePendingPreview() {
+        candidate = null
+        _preview.value = null
+        _applyState.value = ExerciseApplyState.Error(
+            "Exercise preview expired or the local day changed. Preview today again."
+        )
     }
 
     /** Only the user's second explicit action can write a completion. */
@@ -237,12 +245,8 @@ class HealthConnectViewModel @Inject constructor(
             _applyState.value = ExerciseApplyState.Error("Invalid saved time zone; update the mapping")
             return
         }
-        if (!isCurrentExercisePreview(pending.day, zone, pending.previewedAt, Instant.now())) {
-            candidate = null
-            _preview.value = null
-            _applyState.value = ExerciseApplyState.Error(
-                "Exercise preview expired or the local day changed. Preview today again."
-            )
+        if (!isCurrentExercisePreview(pending.day, zone, pending.previewedAt, timeSource.now())) {
+            expirePendingPreview()
             return
         }
         _applyState.value = ExerciseApplyState.Saving
@@ -252,6 +256,13 @@ class HealthConnectViewModel @Inject constructor(
                     candidate = null
                     _applyState.value = ExerciseApplyState.PermissionRequired
                     _status.value = HealthConnectStatus.PermissionRequired
+                    return@launch
+                }
+                // Permission checks can suspend. The preview might cross midnight
+                // or exceed its 15-minute TTL while the user waits for access.
+                // Revalidate immediately before the first local completion write.
+                if (!isCurrentExercisePreview(pending.day, zone, pending.previewedAt, timeSource.now())) {
+                    expirePendingPreview()
                     return@launch
                 }
                 _applyState.value = when (val result = autoCompletionDao.applyEligibleDay(
@@ -272,9 +283,7 @@ class HealthConnectViewModel @Inject constructor(
                 _status.value = HealthConnectStatus.PermissionRequired
             } catch (error: Exception) {
                 candidate = null
-                _applyState.value = ExerciseApplyState.Error(
-                    error.message ?: "Could not apply exercise completion"
-                )
+                _applyState.value = ExerciseApplyState.Error("Could not apply exercise completion")
             }
         }
     }
@@ -390,9 +399,7 @@ class HealthConnectViewModel @Inject constructor(
                 _status.value = HealthConnectStatus.PermissionRequired
                 _syncState.value = ExerciseSyncState.PermissionRequired
             } catch (error: Exception) {
-                _syncState.value = ExerciseSyncState.Error(
-                    error.message ?: "Unable to complete today's mapped habits"
-                )
+                _syncState.value = ExerciseSyncState.Error("Unable to complete today's mapped habits")
             }
         }
     }
@@ -412,7 +419,7 @@ class HealthConnectViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _mappingError.value = error.message ?: "Could not save activity mapping"
+                _mappingError.value = "Could not save activity mapping"
             }
         }
     }
@@ -429,7 +436,7 @@ class HealthConnectViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _mappingError.value = error.message ?: "Could not remove exercise mappings"
+                _mappingError.value = "Could not remove exercise mappings"
             }
         }
     }
@@ -443,7 +450,7 @@ class HealthConnectViewModel @Inject constructor(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _mappingError.value = error.message ?: "Could not remove activity mapping"
+                _mappingError.value = "Could not remove activity mapping"
             }
         }
     }
