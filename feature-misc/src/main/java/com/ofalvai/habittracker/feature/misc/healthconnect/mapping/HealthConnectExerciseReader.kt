@@ -10,6 +10,7 @@ import com.ofalvai.habittracker.core.database.entity.ExerciseHabitMappingEntity
 import com.ofalvai.habittracker.feature.misc.healthconnect.HealthConnectGateway
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -21,6 +22,25 @@ sealed interface ExerciseSessionReadResult {
     data object PermissionRequired : ExerciseSessionReadResult
     data object Unavailable : ExerciseSessionReadResult
     data class Failure(val message: String) : ExerciseSessionReadResult
+}
+
+/**
+ * Keep every valid candidate across Health Connect pages, including conflicting
+ * provider IDs. [matchExerciseDay] chooses one interval per ID deterministically
+ * after clipping it to the mapped local day. Deduplicating here with distinctBy
+ * would silently discard the longer interval based on provider pagination order.
+ */
+internal fun validReaderSessionsForDay(
+    candidates: List<ExerciseSession>,
+    selectedKind: ExerciseKind,
+    dayStart: Instant,
+    dayEnd: Instant
+): List<ExerciseSession> = candidates.filter { session ->
+    session.providerRecordId.isNotBlank() &&
+        session.kind == selectedKind &&
+        session.endsAt.isAfter(session.startsAt) &&
+        session.endsAt.isAfter(dayStart) &&
+        session.startsAt.isBefore(dayEnd)
 }
 
 /**
@@ -76,13 +96,6 @@ class HealthConnectExerciseReader @Inject constructor(
                 for (record in page.records) {
                     // Ignore unrelated or unknown exercise types before building a non-null session.
                     val kind = exerciseKindForHealthConnect(record.exerciseType) ?: continue
-                    if (kind != selectedKind) continue
-                    // No empty IDs, no invalid sessions and no data from outside the day.
-                    if (record.metadata.id.isBlank() ||
-                        !record.endTime.isAfter(record.startTime) ||
-                        !record.endTime.isAfter(dayStart) ||
-                        !record.startTime.isBefore(dayEnd)
-                    ) continue
                     results += ExerciseSession(
                         providerRecordId = record.metadata.id,
                         kind = kind,
@@ -101,7 +114,9 @@ class HealthConnectExerciseReader @Inject constructor(
             if (!gateway.hasExerciseReadPermission()) {
                 return ExerciseSessionReadResult.PermissionRequired
             }
-            return ExerciseSessionReadResult.Success(results.distinctBy { it.providerRecordId })
+            return ExerciseSessionReadResult.Success(
+                validReaderSessionsForDay(results, selectedKind, dayStart, dayEnd)
+            )
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (revoked: SecurityException) {
