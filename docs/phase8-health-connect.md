@@ -94,3 +94,6 @@ Both Android build/unit and emulator workflows passed on `99e5648` (runs 4495258
 
 ### 22 Nov out-of-day duplicate and DST regression checkpoint
 Commit `fe03eaa` filters exercise sessions outside the requested local day **before** deduplicating provider IDs. Previously, an older out-of-day session with the same ID could suppress a later valid in-day session. Commit `36ec79f` adds a regression test for that case and a DST fall-back repeated-hour duration test. These commits are pushed to draft PR #18; fresh Android build/unit and emulator CI results have not yet been confirmed. Device permission grant/deny/revoke and TalkBack validation remain outstanding. Do not merge PR #17 or #18 without explicit authorization.
+
+### 22 Nov duplicate provider identity order-independence
+CI for previous checkpoint `b325576` passed both cloud build/unit (44972808657) and emulator smoke (44972808674). Commit `e2b7ad1` selects the longest **clipped-to-local-day** valid interval when conflicting records share a provider ID, rather than accepting the first returned record. Commit `8fe386f` adds tests for reversed record ordering and an overnight record whose whole-session duration exceeds its in-day contribution. Fresh CI is required for these commits; no physical-device Health Connect permission or TalkBack validation has been performed. Both PRs remain draft and unmerged.
