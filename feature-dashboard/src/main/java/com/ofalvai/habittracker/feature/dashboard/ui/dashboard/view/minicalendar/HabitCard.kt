@@ -45,6 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -177,7 +179,11 @@ fun ActionButton(
             .animateContentSize()
             .padding(end = AppDimensions.spacingSm)
             .heightIn(min = AppDimensions.minTouchTarget)
-            .semantics { role = Role.Checkbox; stateDescription = stateLabel },
+            .semantics {
+                role = Role.Checkbox
+                stateDescription = stateLabel
+                toggleableState = ToggleableState(toggled)
+            },
         onClick = { onActionToggle(!toggled) },
         colors = ButtonDefaults.buttonColors(
             containerColor = color.composeColor
