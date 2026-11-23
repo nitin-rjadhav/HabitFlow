@@ -204,11 +204,13 @@ fun ActionCircle(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .habitActionSemantics(action)
+                // Keep the complete 52dp slot interactive; padding belongs
+                // inside the gesture target, not outside it.
                 .size(Constants.CircleSize)
-                .padding(Constants.CirclePadding)
                 .satisfyingToggleable(
                     vibrator, rippleRadius, false, targetToggled, onToggle, onSinglePress
                 )
+                .padding(Constants.CirclePadding)
                 .border(BorderStroke(2.dp, borderColor), shape)
                 .background(backgroundColor, shape)
                 .clip(shape)
