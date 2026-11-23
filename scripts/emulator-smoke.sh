@@ -141,9 +141,9 @@ echo "Starting bounded database instrumentation tests (6 minute limit)"
 timeout --signal=TERM --kill-after=15s 6m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
 if [[ "${RUN_COMPOSE_UI:-false}" == "true" ]]; then
   echo "Running optional Compose dashboard instrumentation tests"
-  if [[ -n "${COMPOSE_TEST_METHOD:-}" ]]; then
-    echo "Running isolated Compose test: $COMPOSE_TEST_METHOD"
-    timeout --signal=TERM --kill-after=30s 8m ./gradlew --no-daemon :feature-dashboard:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.ofalvai.habittracker.feature.dashboard.AddHabitTest#$COMPOSE_TEST_METHOD"
+  if [[ -n "${COMPOSE_TEST_CLASS:-}" ]]; then
+    echo "Running isolated Compose test: ${COMPOSE_TEST_CLASS}${COMPOSE_TEST_METHOD:+#$COMPOSE_TEST_METHOD}"
+    timeout --signal=TERM --kill-after=30s 8m ./gradlew --no-daemon :feature-dashboard:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=${COMPOSE_TEST_CLASS}${COMPOSE_TEST_METHOD:+#$COMPOSE_TEST_METHOD}"
   else
     timeout --signal=TERM --kill-after=30s 8m ./gradlew --no-daemon :feature-dashboard:connectedDebugAndroidTest
   fi

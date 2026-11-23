@@ -65,6 +65,13 @@
     <string name="habitdetails_archive_confirm">Archive</string>
     <string name="habitdetails_archive_title">Archive habit?</string>
     <string name="habitdetails_archive_description">This habit will be moved to the archive. If you change your mind, you can unarchive the habit without data loss, or delete it forever.</string>
+    <string name="habitdetails_delete_action">Delete habit permanently</string>
+    <string name="habitdetails_delete_title">Permanently delete habit?</string>
+    <string name="habitdetails_delete_description">Delete “%1$s” and all its completion history? This cannot be undone. Archive keeps your history instead.</string>
+    <string name="habitdetails_delete_confirm">Delete forever</string>
+    <string name="habitdetails_delete_error_title">Unable to delete habit</string>
+    <string name="habitdetails_delete_error">Your habit has not been deleted. Please try again.</string>
+    <string name="habitdetails_delete_error_dismiss">OK</string>
     <string name="habitdetails_edit_name_label">Name</string>
     <string name="habitdetails_edit_notes_label">Notes</string>
     <string name="habitdetails_error">Failed to load habit details</string>

@@ -202,6 +202,22 @@ class ExerciseAutoCompletionTest : BaseInstrumentedTest() {
         assertNull(autoDao.getLedger(42, day.toString()))
     }
 
+    @Test fun deletingHabitFromEditCascadesActionsMappingsSourcesAndLedger() = runTest {
+        setupMapping()
+        assertTrue(apply() is ExerciseApplyResult.Applied)
+        assertEquals(1, habitDao.getActionsForHabit(42).size)
+        assertNotNull(autoDao.getLedger(42, day.toString()))
+        assertEquals(2, mappingDao.getSourceRecordCount(42))
+
+        // Same DAO deletion used by the Edit screen and legacy Archive UI.
+        habitDao.deleteHabit(HabitById(42))
+        assertTrue(habitDao.getHabits().isEmpty())
+        assertTrue(habitDao.getActionsForHabit(42).isEmpty())
+        assertNull(mappingDao.getMapping(42))
+        assertNull(autoDao.getLedger(42, day.toString()))
+        assertEquals(0, mappingDao.getSourceRecordCount(42))
+    }
+
     @Test fun backupRestoreClearsImportedProvenance() = runTest {
         setupMapping()
         apply()
