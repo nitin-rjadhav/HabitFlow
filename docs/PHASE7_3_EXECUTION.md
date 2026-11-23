@@ -7,8 +7,8 @@
 - This is a **new UI/UX increment**, not Phase 8 physical-device acceptance. Phase 8 issue #38 remains a separate release gate.
 
 ## Increment 7.3.1 — Dashboard and calendar
-- [ ] Audit Five-Day action circles: ensure a minimum 48dp accessible hit target, preserve five-day layout, long-press/toggle behavior, animation, haptics and day-specific semantics.
-- [x] Mini-Calendar completion button now exposes explicit checked/unchecked accessibility state in addition to its existing checkbox role, state label and 48dp minimum height (commit `2fac5aa`). Historical dots remain read-only.\n- [ ] Verify Mini-Calendar TalkBack state changes with a focused emulator UI test and inspect layout at large font/display sizes.
+- [x] Five-Day completion circles now apply the gesture modifier to the full 52dp slot before interior padding (commit `39f7e15`); retain existing long-press, animation, haptics and day semantics.\n- [ ] Verify Five-Day gestures and 52dp hit target on emulator and with TalkBack.
+- [x] Mini-Calendar completion button now exposes explicit checked/unchecked accessibility state in addition to its existing checkbox role, state label and 48dp minimum height (commit `2fac5aa`). Historical dots remain read-only.\n- [x] Add a focused Android accessibility-tree regression test for Mini-Calendar checkbox checked/unchecked transitions and undo (commit `af67454`).\n- [ ] Execute the new test on the emulator and inspect layout at large font/display sizes.
 - [ ] Improve calendar/history navigation, selected-day feedback and distinction between completed, missed and future days.
 - [ ] Add focused Compose UI tests for the two dashboard layouts and calendar selection; avoid running the known hanging full AddHabitTest suite without isolation.
 
