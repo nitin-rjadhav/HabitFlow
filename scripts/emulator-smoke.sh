@@ -137,6 +137,22 @@ fi
 # am instrument may exit 0 even when tests fail: require exactly one success.
 grep -Eq '^OK \(1 test\)' emulator-evidence/accessibility-instrumentation.txt
 
+# Phase 7.3: execute Mini-Calendar checked/unchecked accessibility regression
+# separately from the known-hanging Compose dashboard suite.
+echo "Running Mini-Calendar accessibility instrumentation test"
+set +e
+timeout --signal=TERM --kill-after=15s 3m adb shell am instrument -w \
+  -e class com.ofalvai.habittracker.feature.dashboard.MiniCalendarAccessibilityTest \
+  com.ofalvai.habittracker.feature.dashboard.test/com.ofalvai.habittracker.core.testing.HiltTestRunner \
+  | tee emulator-evidence/minicalendar-accessibility-instrumentation.txt
+MINICALENDAR_STATUS=${PIPESTATUS[0]}
+set -e
+if [[ "$MINICALENDAR_STATUS" -ne 0 ]]; then
+  echo "::error::Mini-Calendar accessibility instrumentation failed or timed out (status $MINICALENDAR_STATUS)"
+  exit "$MINICALENDAR_STATUS"
+fi
+grep -Eq '^OK \\(1 test\\)' emulator-evidence/minicalendar-accessibility-instrumentation.txt
+
 echo "Starting bounded database instrumentation tests (6 minute limit)"
 timeout --signal=TERM --kill-after=15s 6m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
 if [[ "${RUN_COMPOSE_UI:-false}" == "true" ]]; then
