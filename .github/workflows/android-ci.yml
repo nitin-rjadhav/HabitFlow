@@ -40,12 +40,33 @@ jobs:
           ./gradlew --no-daemon --stacktrace :app:assembleDebug testDebugUnitTest
       - name: Upload debug APK
         if: success()
+        id: upload_debug_apk
         uses: actions/upload-artifact@v4
         with:
           name: habitflow-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 14
           if-no-files-found: error
+      # Make the downloadable app visible directly on each workflow run's
+      # Summary tab. The URL is emitted by upload-artifact@v4 for this run.
+      - name: Show debug APK download link
+        if: success()
+        env:
+          APK_ARTIFACT_URL: ${{ steps.upload_debug_apk.outputs.artifact-url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$APK_ARTIFACT_URL"
+          {
+            echo '## 📱 HabitFlow debug APK'
+            echo
+            echo "[Download this run's APK artifact]($APK_ARTIFACT_URL)"
+            echo
+            echo "Build commit: \`$GITHUB_SHA\`"
+            echo 'This is an unsigned-for-release debug build, not a Play Store release.'
+            echo 'GitHub downloads the artifact as a ZIP; extract the .apk to install.'
+            echo 'The download is retained for 14 days and may require GitHub sign-in.'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
