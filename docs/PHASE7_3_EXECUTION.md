@@ -8,7 +8,7 @@
 
 ## Increment 7.3.1 — Dashboard and calendar
 - [ ] Audit Five-Day action circles: ensure a minimum 48dp accessible hit target, preserve five-day layout, long-press/toggle behavior, animation, haptics and day-specific semantics.
-- [ ] Audit Mini-Calendar: ensure today's completion button has accurate TalkBack role/state and minimum touch target; historical dots remain read-only.
+- [x] Mini-Calendar completion button now exposes explicit checked/unchecked accessibility state in addition to its existing checkbox role, state label and 48dp minimum height (commit `2fac5aa`). Historical dots remain read-only.\n- [ ] Verify Mini-Calendar TalkBack state changes with a focused emulator UI test and inspect layout at large font/display sizes.
 - [ ] Improve calendar/history navigation, selected-day feedback and distinction between completed, missed and future days.
 - [ ] Add focused Compose UI tests for the two dashboard layouts and calendar selection; avoid running the known hanging full AddHabitTest suite without isolation.
 
