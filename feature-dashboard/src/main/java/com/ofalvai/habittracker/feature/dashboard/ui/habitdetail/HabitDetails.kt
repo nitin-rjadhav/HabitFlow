@@ -37,6 +37,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import com.ofalvai.habittracker.core.ui.theme.AppDimensions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -315,6 +320,12 @@ private fun ToggleButton(
         onClick = {
             if (!checked) { onCheckedChange(false) }
         },
+        modifier = Modifier
+            .heightIn(min = AppDimensions.minTouchTarget)
+            .semantics {
+                role = Role.Tab
+                selected = checked
+            },
         colors = toggleButtonColors(checked),
         shape = shape
     ) { content() }
