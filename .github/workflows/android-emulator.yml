@@ -71,12 +71,9 @@ jobs:
           # Exercise only the isolated Phase 7.2 Delete Habit Compose tests on this
           # draft PR. The existing AddHabit suite remains excluded (issue #6).
           # android-emulator-runner executes script via /usr/bin/sh -c, which treats
-          # each multiline command as a separate invocation. Keep the conditional
-          # on one line so the shell receives a complete if/then/else/fi statement.
-          script: >-
-            if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.number }}" = "39" ]; then
-              RUN_COMPOSE_UI=true COMPOSE_TEST_CLASS=com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitDetailDeleteAffordanceTest bash -x scripts/emulator-smoke.sh;
-            else bash -x scripts/emulator-smoke.sh; fi
+          # YAML folding can preserve newlines for more-indented commands.
+          # Use one physical line for the entire shell conditional.
+          script: 'if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.number }}" = "39" ]; then RUN_COMPOSE_UI=true COMPOSE_TEST_CLASS=com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitDetailDeleteAffordanceTest bash -x scripts/emulator-smoke.sh; else bash -x scripts/emulator-smoke.sh; fi'
       - name: Collect emulator diagnostics
         if: always()
         run: |
