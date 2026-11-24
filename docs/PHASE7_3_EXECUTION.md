@@ -7,8 +7,11 @@
 - This is a **new UI/UX increment**, not Phase 8 physical-device acceptance. Phase 8 issue #38 remains a separate release gate.
 
 ## Increment 7.3.1 — Dashboard and calendar
-- [x] Five-Day completion circles now apply the gesture modifier to the full 52dp slot before interior padding (commit `39f7e15`); retain existing long-press, animation, haptics and day semantics.\n- [ ] Verify Five-Day gestures and 52dp hit target on emulator and with TalkBack.
-- [x] Mini-Calendar completion button now exposes explicit checked/unchecked accessibility state in addition to its existing checkbox role, state label and 48dp minimum height (commit `2fac5aa`). Historical dots remain read-only.\n- [x] Add a focused Android accessibility-tree regression test for Mini-Calendar checkbox checked/unchecked transitions and undo (commit `af67454`).\n- [x] Execute the new Mini-Calendar accessibility test on the emulator (PR #41, run 45128029415).
+- [x] Five-Day completion circles now apply the gesture modifier to the full 52dp slot before interior padding (commit `39f7e15`); retain existing long-press, animation, haptics and day semantics.
+- [ ] Verify Five-Day gestures and 52dp hit target on emulator and with TalkBack.
+- [x] Mini-Calendar completion button now exposes explicit checked/unchecked accessibility state in addition to its existing checkbox role, state label and 48dp minimum height (commit `2fac5aa`). Historical dots remain read-only.
+- [x] Add a focused Android accessibility-tree regression test for Mini-Calendar checkbox checked/unchecked transitions and undo (commit `af67454`).
+- [x] Execute the new Mini-Calendar accessibility test on the emulator (PR #41, run 45128029415).
 - [ ] Inspect layout at large font/display sizes.
 - [ ] Improve calendar/history navigation, selected-day feedback and distinction between completed, missed and future days.
 - [ ] Add focused Compose UI tests for the two dashboard layouts and calendar selection; avoid running the known hanging full AddHabitTest suite without isolation.
@@ -34,3 +37,8 @@
 - PR #41 merged; targeted Mini-Calendar instrumentation CI passed.
 - PR #42 merged at `7cb339a9`; habit-name error semantics and statistics selector accessibility added. Branch build/unit run [45130880138](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45130880138) and emulator run [45130880142](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45130880142) passed.
 - Remaining: calendar navigation/day states, manual accessibility and large-font verification, regression and integrated main CI. No final acceptance claimed.
+
+## Verified checkpoint — 25 November 2026
+- PR #47 commit `0334a64`: [build/unit #320](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45472727688) and [emulator #301](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45472728076) passed. Emulator logs confirm 1 accessibility action test, 2 calendar accessibility tests and 52 database instrumentation tests passed.
+- Calendar regression covers completion, undo, recompletion, disabled future dates, previous/next month accessibility actions, 48dp pager bounds and completion preservation after navigation. The prior missing navigation node failure was resolved by assigning descriptions to the actionable buttons.
+- Five-Day gesture verification, Create/Edit audit, backup regression evidence, UI states and manual font/contrast/TalkBack checks remain open. Integrated main CI requires approved merge. Do not interpret this checkpoint as final acceptance.
