@@ -41,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
@@ -109,11 +111,15 @@ fun AddHabitForm(
             focusedBorderColor = selectedHabitColor,
             focusedLabelColor = selectedHabitColor,
         )
+        val nameErrorMessage = stringResource(R.string.addhabit_name_error)
         OutlinedTextField(
             modifier = Modifier
                 .focusRequester(nameFocusRequester)
                 .padding(horizontal = 32.dp, vertical = 16.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .semantics {
+                    if (!isNameValid) error(nameErrorMessage)
+                },
             value = name,
             onValueChange = { name = it; if (it.isNotBlank()) isNameValid = true },
             label = { Text(stringResource(R.string.addhabit_name_label)) },
