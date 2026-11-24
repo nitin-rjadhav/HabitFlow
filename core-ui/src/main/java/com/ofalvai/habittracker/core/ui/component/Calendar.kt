@@ -60,7 +60,7 @@ import com.ofalvai.habittracker.core.ui.recomposition.StableHolder
 import com.ofalvai.habittracker.core.ui.theme.CoreIcons
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import java.time.Year
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -84,8 +84,8 @@ fun HorizontalMonthCalendar(
 
     LaunchedEffect(state) {
         snapshotFlow { state.layoutInfo.visibleMonthsInfo }
-            .map { visibleMonths ->
-                visibleMonths.first().month.yearMonth
+            .mapNotNull { visibleMonths ->
+                visibleMonths.firstOrNull()?.month?.yearMonth
             }
             .distinctUntilChanged()
             .collect {
