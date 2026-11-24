@@ -31,6 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import androidx.compose.ui.unit.dp
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
@@ -74,9 +78,12 @@ private fun DayCell(
     onDayClick: (LocalDate, Action) -> Unit
 ) {
     val today = LocalDate.now()
+    val isCurrentMonth = day.position == DayPosition.MonthDate
+    val isFuture = day.date.isAfter(today)
+    val dateLabel = day.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
     val backgroundColor = if (action.toggled) {
         habitColor
-    } else if (day.position == DayPosition.MonthDate) {
+    } else if (isCurrentMonth && !isFuture) {
         LocalAppColors.current.gray1
     } else Color.Transparent
 
@@ -86,10 +93,11 @@ private fun DayCell(
     Box(
         modifier = Modifier
             .habitActionSemantics(action)
+            .semantics { contentDescription = dateLabel }
             .padding(4.dp)
             .then(todayModifier)
             .clip(CircleShape)
-            .clickable(enabled = day.position == DayPosition.MonthDate && !day.date.isAfter(today)) {
+            .clickable(enabled = isCurrentMonth && !isFuture) {
                 onDayClick(day.date, action.copy(toggled = !action.toggled))
             }
             .aspectRatio(1f)
