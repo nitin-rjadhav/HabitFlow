@@ -93,8 +93,8 @@ private fun DayCell(
     } else Modifier
     Box(
         modifier = Modifier
-            .habitActionSemantics(action)
             .semantics { contentDescription = dateLabel }
+            .habitActionSemantics(action)
             .aspectRatio(1f)
             .toggleable(value = action.toggled, enabled = isCurrentMonth && !isFuture, role = Role.Checkbox) { checked ->
                 onDayClick(day.date, action.copy(toggled = checked))
