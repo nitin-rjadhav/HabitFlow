@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +44,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -107,7 +111,7 @@ fun CalendarPager(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onPreviousClick) {
+        IconButton(onClick = onPreviousClick, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) {
             Icon(
                 CoreIcons.ChevronLeft,
                 contentDescription = stringResource(R.string.calendar_previous_month)
@@ -117,7 +121,7 @@ fun CalendarPager(
         AnimatedContent(
             targetState = yearMonth.item,
             transitionSpec = pagerTransitionSpec,
-            modifier = Modifier.fillMaxWidth(0.8f), label = "CalendarPager"
+            modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }, label = "CalendarPager"
         ) { targetYearMonth ->
             val month = targetYearMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
             val year = targetYearMonth.year
@@ -129,7 +133,7 @@ fun CalendarPager(
             )
         }
 
-        IconButton(onClick = onNextClick) {
+        IconButton(onClick = onNextClick, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) {
             Icon(
                 CoreIcons.ChevronRight,
                 contentDescription = stringResource(R.string.calendar_next_month)
