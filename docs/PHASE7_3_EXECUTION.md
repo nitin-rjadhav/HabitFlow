@@ -8,7 +8,8 @@
 
 ## Increment 7.3.1 — Dashboard and calendar
 - [x] Five-Day completion circles now apply the gesture modifier to the full 52dp slot before interior padding (commit `39f7e15`); retain existing long-press, animation, haptics and day semantics.\n- [ ] Verify Five-Day gestures and 52dp hit target on emulator and with TalkBack.
-- [x] Mini-Calendar completion button now exposes explicit checked/unchecked accessibility state in addition to its existing checkbox role, state label and 48dp minimum height (commit `2fac5aa`). Historical dots remain read-only.\n- [x] Add a focused Android accessibility-tree regression test for Mini-Calendar checkbox checked/unchecked transitions and undo (commit `af67454`).\n- [ ] Execute the new test on the emulator and inspect layout at large font/display sizes.
+- [x] Mini-Calendar completion button now exposes explicit checked/unchecked accessibility state in addition to its existing checkbox role, state label and 48dp minimum height (commit `2fac5aa`). Historical dots remain read-only.\n- [x] Add a focused Android accessibility-tree regression test for Mini-Calendar checkbox checked/unchecked transitions and undo (commit `af67454`).\n- [x] Execute the new Mini-Calendar accessibility test on the emulator (PR #41, run 45128029415).
+- [ ] Inspect layout at large font/display sizes.
 - [ ] Improve calendar/history navigation, selected-day feedback and distinction between completed, missed and future days.
 - [ ] Add focused Compose UI tests for the two dashboard layouts and calendar selection; avoid running the known hanging full AddHabitTest suite without isolation.
 
@@ -28,3 +29,8 @@
 - Keep HabitFlow strictly free, local-first, without analytics, telemetry, paid services or background data uploads.
 - Use focused PRs, record exact CI run links, and **do not merge without user approval**.
 - The existing automated CI is a prerequisite; passing CI alone does not replace manual TalkBack and physical-device acceptance.
+
+## Integrated checkpoint — 24 November 2026
+- PR #41 merged; targeted Mini-Calendar instrumentation CI passed.
+- PR #42 merged at `7cb339a9`; habit-name error semantics and statistics selector accessibility added. Branch build/unit run [45130880138](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45130880138) and emulator run [45130880142](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45130880142) passed.
+- Remaining: calendar navigation/day states, manual accessibility and large-font verification, regression and integrated main CI. No final acceptance claimed.
