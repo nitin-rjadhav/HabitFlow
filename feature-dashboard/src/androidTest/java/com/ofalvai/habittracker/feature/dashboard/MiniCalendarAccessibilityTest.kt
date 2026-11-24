@@ -62,28 +62,80 @@ class MiniCalendarAccessibilityTest {
     fun historyCalendarExposesDateAndTogglesToday() {
         val today = LocalDate.now()
         val label = today.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
-        val observed = AtomicReference<LocalDate?>(null)
+        val observed = AtomicReference<Pair<LocalDate, Boolean>?>(null)
+        val actions = mutableStateOf(emptyList<Action>())
+        val month = mutableStateOf(YearMonth.from(today))
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 activity.setContent {
                     PreviewTheme {
                         HabitCalendar(
-                            yearMonth = StableHolder(YearMonth.from(today)),
+                            yearMonth = StableHolder(month.value),
                             habitColor = Color.Green,
-                            actions = emptyList<Action>(),
-                            onDayToggle = { date, _ -> observed.set(date) },
+                            actions = actions.value,
+                            onDayToggle = { date, action ->
+                                observed.set(date to action.toggled)
+                                actions.value = if (action.toggled) {
+                                    listOf(action.copy(timestamp = date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()))
+                                } else {
+                                    emptyList()
+                                }
+                            },
                             onMonthSwipe = {}
                         )
                     }
                 }
             }
             clickCheckbox(expectedChecked = false, dateLabel = label)
-            repeat(40) {
-                if (observed.get() == today) return
-                Thread.sleep(250)
+            waitForDayToggle(observed, today to true)
+            clickCheckbox(expectedChecked = true, dateLabel = label)
+            waitForDayToggle(observed, today to false)
+            // A second completion proves that undo restored the unchecked semantics.
+            clickCheckbox(expectedChecked = false, dateLabel = label)
+            waitForDayToggle(observed, today to true)
+
+            val tomorrow = today.plusDays(1)
+            if (YearMonth.from(tomorrow) != YearMonth.from(today)) {
+                scenario.onActivity { month.value = YearMonth.from(tomorrow) }
             }
-            assertEquals(today, observed.get())
+            assertDisabledDate(tomorrow.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)))
+            assertEquals(today to true, observed.get())
         }
+    }
+
+    private fun waitForDayToggle(
+        observed: AtomicReference<Pair<LocalDate, Boolean>?>,
+        expected: Pair<LocalDate, Boolean>
+    ) {
+        repeat(40) {
+            if (observed.get() == expected) return
+            Thread.sleep(250)
+        }
+        assertEquals(expected, observed.get())
+    }
+
+    private fun assertDisabledDate(dateLabel: String) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        repeat(40) {
+            val root = automation.rootInActiveWindow
+            if (root != null) {
+                try {
+                    val node = findCheckbox(root, false, dateLabel, expectedEnabled = false)
+                    if (node != null) {
+                        try {
+                            assertTrue("Future date must be disabled", !node.isEnabled)
+                            return
+                        } finally {
+                            node.recycle()
+                        }
+                    }
+                } finally {
+                    root.recycle()
+                }
+            }
+            Thread.sleep(250)
+        }
+        throw AssertionError("No disabled, unchecked calendar date: $dateLabel")
     }
 
     private fun waitForState(state: AtomicBoolean, expected: Boolean) {
@@ -159,16 +211,18 @@ class MiniCalendarAccessibilityTest {
     private fun findCheckbox(
         node: AccessibilityNodeInfo,
         expectedChecked: Boolean,
-        dateLabel: String?
+        dateLabel: String?,
+        expectedEnabled: Boolean = true
     ): AccessibilityNodeInfo? {
-        if (node.isClickable && node.isCheckable && node.isChecked == expectedChecked &&
+        if ((!expectedEnabled || node.isClickable) && node.isVisibleToUser &&
+            node.isEnabled == expectedEnabled && node.isCheckable && node.isChecked == expectedChecked &&
             (dateLabel == null || node.contentDescription?.toString() == dateLabel)) {
             return AccessibilityNodeInfo.obtain(node)
         }
         for (index in 0 until node.childCount) {
             val child = node.getChild(index) ?: continue
             try {
-                val found = findCheckbox(child, expectedChecked, dateLabel)
+                val found = findCheckbox(child, expectedChecked, dateLabel, expectedEnabled)
                 if (found != null) return found
             } finally {
                 child.recycle()
