@@ -44,6 +44,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -111,11 +112,14 @@ fun CalendarPager(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onPreviousClick, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) {
-            Icon(
-                CoreIcons.ChevronLeft,
-                contentDescription = stringResource(R.string.calendar_previous_month)
-            )
+        val previousMonthLabel = stringResource(R.string.calendar_previous_month)
+        IconButton(
+            onClick = onPreviousClick,
+            modifier = Modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .semantics { contentDescription = previousMonthLabel }
+        ) {
+            Icon(CoreIcons.ChevronLeft, contentDescription = null)
         }
 
         AnimatedContent(
@@ -133,11 +137,14 @@ fun CalendarPager(
             )
         }
 
-        IconButton(onClick = onNextClick, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) {
-            Icon(
-                CoreIcons.ChevronRight,
-                contentDescription = stringResource(R.string.calendar_next_month)
-            )
+        val nextMonthLabel = stringResource(R.string.calendar_next_month)
+        IconButton(
+            onClick = onNextClick,
+            modifier = Modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .semantics { contentDescription = nextMonthLabel }
+        ) {
+            Icon(CoreIcons.ChevronRight, contentDescription = null)
         }
     }
 }
