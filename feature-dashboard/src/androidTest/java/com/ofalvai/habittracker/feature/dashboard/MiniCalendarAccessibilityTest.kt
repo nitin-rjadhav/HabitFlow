@@ -3,6 +3,8 @@ package com.ofalvai.habittracker.feature.dashboard
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import com.ofalvai.habittracker.core.ui.component.CalendarPager
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import com.ofalvai.habittracker.core.model.Action
@@ -69,20 +71,27 @@ class MiniCalendarAccessibilityTest {
             scenario.onActivity { activity ->
                 activity.setContent {
                     PreviewTheme {
-                        HabitCalendar(
-                            yearMonth = StableHolder(month.value),
-                            habitColor = Color.Green,
-                            actions = actions.value,
-                            onDayToggle = { date, action ->
-                                observed.set(date to action.toggled)
-                                actions.value = if (action.toggled) {
-                                    listOf(action.copy(timestamp = date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()))
-                                } else {
-                                    emptyList()
-                                }
-                            },
-                            onMonthSwipe = {}
-                        )
+                        Column {
+                            CalendarPager(
+                                yearMonth = StableHolder(month.value),
+                                onPreviousClick = { month.value = month.value.minusMonths(1) },
+                                onNextClick = { month.value = month.value.plusMonths(1) }
+                            )
+                            HabitCalendar(
+                                yearMonth = StableHolder(month.value),
+                                habitColor = Color.Green,
+                                actions = actions.value,
+                                onDayToggle = { date, action ->
+                                    observed.set(date to action.toggled)
+                                    actions.value = if (action.toggled) {
+                                        listOf(action.copy(timestamp = date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()))
+                                    } else {
+                                        emptyList()
+                                    }
+                                },
+                                onMonthSwipe = {}
+                            )
+                        }
                     }
                 }
             }
@@ -100,7 +109,88 @@ class MiniCalendarAccessibilityTest {
             }
             assertDisabledDate(tomorrow.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)))
             assertEquals(today to true, observed.get())
+
+            // Return to the original month before testing both pager buttons.
+            scenario.onActivity { month.value = YearMonth.from(today) }
+            waitForAccessibleNode("Today's completed checkbox") {
+                findCheckbox(it, true, label)
+            }
+            var previousLabel = ""
+            var nextLabel = ""
+            var density = 1f
+            scenario.onActivity { activity ->
+                previousLabel = activity.getString(com.ofalvai.habittracker.core.ui.R.string.calendar_previous_month)
+                nextLabel = activity.getString(com.ofalvai.habittracker.core.ui.R.string.calendar_next_month)
+                density = activity.resources.displayMetrics.density
+            }
+            clickMonthButton(previousLabel, density)
+            val previousMonthDate = YearMonth.from(today).minusMonths(1).atDay(15)
+                .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+            waitForAccessibleNode("Previous month's day 15") {
+                findCheckbox(it, false, previousMonthDate)
+            }
+            clickMonthButton(nextLabel, density)
+            waitForAccessibleNode("Today's completed checkbox after navigation") {
+                findCheckbox(it, true, label)
+            }
+            assertEquals(today to true, observed.get())
         }
+    }
+
+    private fun clickMonthButton(label: String, density: Float) {
+        waitForAccessibleNode("Month navigation: $label", onFound = { node ->
+            val bounds = android.graphics.Rect()
+            node.getBoundsInScreen(bounds)
+            // Allow one pixel of rounding in density conversion.
+            assertTrue("Month button width must be at least 48dp", bounds.width() + 1 >= 48 * density)
+            assertTrue("Month button height must be at least 48dp", bounds.height() + 1 >= 48 * density)
+            assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        }) { findMonthButton(it, label) }
+    }
+
+    private fun findMonthButton(node: AccessibilityNodeInfo, label: String): AccessibilityNodeInfo? {
+        if (node.isVisibleToUser && node.isEnabled && node.isClickable &&
+            node.contentDescription?.toString() == label) {
+            return AccessibilityNodeInfo.obtain(node)
+        }
+        for (index in 0 until node.childCount) {
+            val child = node.getChild(index) ?: continue
+            try {
+                val match = findMonthButton(child, label)
+                if (match != null) return match
+            } finally {
+                child.recycle()
+            }
+        }
+        return null
+    }
+
+    private fun waitForAccessibleNode(
+        description: String,
+        onFound: (AccessibilityNodeInfo) -> Unit = {},
+        find: (AccessibilityNodeInfo) -> AccessibilityNodeInfo?
+    ) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        repeat(40) {
+            val root = automation.rootInActiveWindow
+            if (root != null) {
+                try {
+                    val node = find(root)
+                    if (node != null) {
+                        try {
+                            onFound(node)
+                            return
+                        } finally {
+                            node.recycle()
+                        }
+                    }
+                } finally {
+                    root.recycle()
+                }
+            }
+            Thread.sleep(250)
+        }
+        throw AssertionError("Missing accessible node: $description")
     }
 
     private fun waitForDayToggle(
