@@ -115,7 +115,45 @@ class MiniCalendarAccessibilityTest {
             }
             Thread.sleep(250)
         }
-        assertTrue("No clickable checkbox with checked=$expectedChecked", false)
+        val diagnostic = StringBuilder()
+        val root = automation.rootInActiveWindow
+        if (root == null) {
+            diagnostic.append("No active accessibility window")
+        } else {
+            try {
+                appendAccessibilityTree(root, diagnostic, 0)
+            } finally {
+                root.recycle()
+            }
+        }
+        val message = "No clickable checkbox with checked=$expectedChecked, date=$dateLabel"
+        // This test hosts only synthetic habit data. Print per-line diagnostics so
+        // CI retains the full tree even if the instrumentation failure is truncated.
+        diagnostic.lineSequence().forEach { android.util.Log.i("CalendarA11yTest", it) }
+        throw AssertionError("$message\n$diagnostic")
+    }
+
+    private fun appendAccessibilityTree(
+        node: AccessibilityNodeInfo,
+        output: StringBuilder,
+        depth: Int
+    ) {
+        val bounds = android.graphics.Rect()
+        node.getBoundsInScreen(bounds)
+        output.append("  ".repeat(depth))
+            .append("class=${node.className}, text=${node.text}, description=${node.contentDescription}")
+            .append(", state=${if (android.os.Build.VERSION.SDK_INT >= 30) node.stateDescription else null}")
+            .append(", clickable=${node.isClickable}, checkable=${node.isCheckable}, checked=${node.isChecked}")
+            .append(", enabled=${node.isEnabled}, visible=${node.isVisibleToUser}, bounds=$bounds")
+            .append('\n')
+        for (index in 0 until node.childCount) {
+            val child = node.getChild(index) ?: continue
+            try {
+                appendAccessibilityTree(child, output, depth + 1)
+            } finally {
+                child.recycle()
+            }
+        }
     }
 
     private fun findCheckbox(
