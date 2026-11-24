@@ -4,6 +4,15 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.Color
+import com.ofalvai.habittracker.core.model.Action
+import com.ofalvai.habittracker.core.ui.recomposition.StableHolder
+import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitCalendar
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.concurrent.atomic.AtomicReference
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -49,6 +58,34 @@ class MiniCalendarAccessibilityTest {
         }
     }
 
+    @Test
+    fun historyCalendarExposesDateAndTogglesToday() {
+        val today = LocalDate.now()
+        val label = today.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+        val observed = AtomicReference<LocalDate?>(null)
+        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.setContent {
+                    PreviewTheme {
+                        HabitCalendar(
+                            yearMonth = StableHolder(YearMonth.from(today)),
+                            habitColor = Color.Green,
+                            actions = emptyList<Action>(),
+                            onDayToggle = { date, _ -> observed.set(date) },
+                            onMonthSwipe = {}
+                        )
+                    }
+                }
+            }
+            clickCheckbox(expectedChecked = false, dateLabel = label)
+            repeat(40) {
+                if (observed.get() == today) return
+                Thread.sleep(250)
+            }
+            assertEquals(today, observed.get())
+        }
+    }
+
     private fun waitForState(state: AtomicBoolean, expected: Boolean) {
         repeat(40) {
             if (state.get() == expected) return
@@ -57,13 +94,13 @@ class MiniCalendarAccessibilityTest {
         assertEquals(expected, state.get())
     }
 
-    private fun clickCheckbox(expectedChecked: Boolean) {
+    private fun clickCheckbox(expectedChecked: Boolean, dateLabel: String? = null) {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         repeat(40) {
             val root = automation.rootInActiveWindow
             if (root != null) {
                 try {
-                    val checkbox = findCheckbox(root, expectedChecked)
+                    val checkbox = findCheckbox(root, expectedChecked, dateLabel)
                     if (checkbox != null) {
                         try {
                             assertTrue(checkbox.performAction(AccessibilityNodeInfo.ACTION_CLICK))
@@ -83,15 +120,17 @@ class MiniCalendarAccessibilityTest {
 
     private fun findCheckbox(
         node: AccessibilityNodeInfo,
-        expectedChecked: Boolean
+        expectedChecked: Boolean,
+        dateLabel: String?
     ): AccessibilityNodeInfo? {
-        if (node.isClickable && node.isCheckable && node.isChecked == expectedChecked) {
+        if (node.isClickable && node.isCheckable && node.isChecked == expectedChecked &&
+            (dateLabel == null || node.contentDescription?.toString() == dateLabel)) {
             return AccessibilityNodeInfo.obtain(node)
         }
         for (index in 0 until node.childCount) {
             val child = node.getChild(index) ?: continue
             try {
-                val found = findCheckbox(child, expectedChecked)
+                val found = findCheckbox(child, expectedChecked, dateLabel)
                 if (found != null) return found
             } finally {
                 child.recycle()
