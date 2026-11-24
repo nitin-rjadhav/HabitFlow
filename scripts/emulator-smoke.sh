@@ -151,7 +151,7 @@ if [[ "$MINICALENDAR_STATUS" -ne 0 ]]; then
   echo "::error::Mini-Calendar accessibility instrumentation failed or timed out (status $MINICALENDAR_STATUS)"
   exit "$MINICALENDAR_STATUS"
 fi
-grep -Eq '^OK \(1 test\)' emulator-evidence/minicalendar-accessibility-instrumentation.txt
+grep -Eq '^OK \(2 tests\)' emulator-evidence/minicalendar-accessibility-instrumentation.txt
 
 echo "Starting bounded database instrumentation tests (6 minute limit)"
 timeout --signal=TERM --kill-after=15s 6m ./gradlew --no-daemon :core-database:connectedDebugAndroidTest
