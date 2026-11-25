@@ -96,7 +96,10 @@ internal fun HabitDetailHeader(
         when (habitDetailState) {
             Result.Loading -> HabitDetailLoadingAppBar(onBack)
             is Result.Failure -> {
-                ErrorView(label = stringResource(R.string.habitdetails_error))
+                Column {
+                    HabitDetailLoadingAppBar(onBack)
+                    ErrorView(label = stringResource(R.string.habitdetails_error))
+                }
             }
             is Result.Success -> {
                 AnimatedVisibility(

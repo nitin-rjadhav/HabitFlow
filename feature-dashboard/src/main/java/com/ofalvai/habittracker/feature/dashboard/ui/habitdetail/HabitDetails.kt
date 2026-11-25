@@ -75,6 +75,7 @@ import com.ofalvai.habittracker.core.ui.state.asEffect
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.core.ui.theme.composeColor
 import com.ofalvai.habittracker.feature.dashboard.R
+import com.ofalvai.habittracker.feature.dashboard.ui.DashboardLoading
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.vibrateCompat
 import com.ofalvai.habittracker.feature.dashboard.ui.model.ActionCountChart
 import com.ofalvai.habittracker.feature.dashboard.ui.model.SingleStats
@@ -198,7 +199,7 @@ internal fun DeleteHabitConfirmationDialog(
 }
 
 @Composable
-private fun HabitDetailScreen(
+internal fun HabitDetailScreen(
     habitDetailState: Result<HabitWithActions>,
     singleStats: SingleStats,
     chartData: Result<ActionCountChart>,
@@ -216,27 +217,20 @@ private fun HabitDetailScreen(
 
         Column(Modifier.verticalScroll(scrollState).padding(16.dp)) {
             when (habitDetailState) {
-                is Result.Success -> Calendar(habitDetailState, onDayToggle)
-                Result.Loading -> {
-                    // No calendar and stats in loading state
+                is Result.Success -> {
+                    Calendar(habitDetailState, onDayToggle)
+                    when (chartData) {
+                        is Result.Success -> HabitStats(chartData.value, onChartTypeChange)
+                        is Result.Failure -> ErrorView(
+                            label = stringResource(R.string.habitdetails_error_stats),
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
+                        Result.Loading -> DashboardLoading(stringResource(R.string.habitdetails_stats_loading))
+                    }
                 }
-                is Result.Failure -> {
-                    ErrorView(
-                        label = stringResource(R.string.habitdetails_error_stats),
-                        modifier = Modifier.padding(top = 64.dp)
-                    )
-                }
-            }
-
-            when (chartData) {
-                is Result.Success -> HabitStats(chartData.value, onChartTypeChange)
-                is Result.Failure -> ErrorView(
-                    label = stringResource(R.string.habitdetails_error_stats),
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-                Result.Loading -> {
-                    // No chart in loading state
-                }
+                Result.Loading -> DashboardLoading(stringResource(R.string.habitdetails_loading))
+                // Header already shows the error and Back navigation.
+                is Result.Failure -> Unit
             }
 
             // Add some scrollable empty space. This helps the collapsible header avoid oscillating

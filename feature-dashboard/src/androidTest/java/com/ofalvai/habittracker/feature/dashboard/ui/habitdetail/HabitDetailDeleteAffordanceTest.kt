@@ -23,6 +23,9 @@ import com.ofalvai.habittracker.core.model.HabitWithActions
 import com.ofalvai.habittracker.core.ui.state.Result
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.feature.dashboard.ui.model.SingleStats
+import com.ofalvai.habittracker.feature.dashboard.ui.model.DashboardConfig
+import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.DashboardContent
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -89,6 +92,61 @@ class HabitDetailDeleteAffordanceTest {
         compose.onNodeWithContentDescription("Archive").assertHeightIsAtLeast(48.dp)
         compose.onNodeWithContentDescription("Save").performClick()
         compose.runOnIdle { assertEquals(habit.copy(name = "Evening run"), saved) }
+    }
+
+    @Test fun dashboardLoadingEmptyAndFailureAreDistinct() {
+        val state = mutableStateOf<Result<ImmutableList<HabitWithActions>>>(Result.Loading)
+        var addCount = 0
+        compose.setContent {
+            PreviewTheme {
+                DashboardContent(
+                    habits = state.value, config = DashboardConfig.FiveDay,
+                    onboardingState = null, exerciseActionIds = emptySet(),
+                    onAddHabitClick = { addCount++ }, onConfigClick = {},
+                    onActionToggle = { _, _, _ -> }, onHabitDetail = {},
+                    onSettingsClick = {}, onArchiveClick = {}, onExportClick = {},
+                    onMove = {}
+                )
+            }
+        }
+        compose.onNodeWithText("Loading habits…").assertIsDisplayed()
+        compose.onNodeWithText("Create your first habit").assertDoesNotExist()
+        compose.runOnIdle { state.value = Result.Success(persistentListOf()) }
+        compose.onNodeWithText("Loading habits…").assertDoesNotExist()
+        compose.onNodeWithText("You don't have any habits yet.").assertIsDisplayed()
+        compose.onNodeWithText("Create your first habit").performClick()
+        compose.runOnIdle {
+            assertEquals(1, addCount)
+            state.value = Result.Failure(IllegalStateException("synthetic"))
+        }
+        compose.onNodeWithText("Failed to load habit list").assertIsDisplayed()
+        compose.onNodeWithText("My habits").assertIsDisplayed()
+        compose.onNodeWithText("Create your first habit").assertDoesNotExist()
+    }
+
+    @Test fun detailLoadingAndFailureRetainBackNavigation() {
+        val state = mutableStateOf<Result<HabitWithActions>>(Result.Loading)
+        var backCount = 0
+        compose.setContent {
+            PreviewTheme {
+                HabitDetailScreen(
+                    habitDetailState = state.value,
+                    singleStats = SingleStats(null, 0, 0, 0f),
+                    chartData = Result.Loading,
+                    onChartTypeChange = {},
+                    onBack = { backCount++ }, onEdit = {}, onArchive = {},
+                    onDelete = {}, onDayToggle = { _, _ -> }
+                )
+            }
+        }
+        compose.onNodeWithText("Loading habit details…").assertIsDisplayed()
+        compose.onNodeWithText("Loading habit statistics…").assertDoesNotExist()
+        compose.runOnIdle { state.value = Result.Failure(IllegalStateException("synthetic")) }
+        compose.onNodeWithText("Loading habit details…").assertDoesNotExist()
+        compose.onNodeWithText("Failed to load habit details").assertIsDisplayed()
+        compose.onNodeWithText("Failed to load habit statistics").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.runOnIdle { assertEquals(1, backCount) }
     }
 
     @Test fun cancelConfirmationPreservesHabitAndDoesNotDelete() {
