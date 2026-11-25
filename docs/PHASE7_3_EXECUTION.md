@@ -60,3 +60,8 @@
 ## Verified checkpoint — Dashboard/history states
 - PR #47 commit `6ab2dc3`: [build/unit #326](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45583090789) and [emulator #307](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45583090691) passed; logs confirm 1 Five-Day, 2 calendar, 53 database and 7 isolated Compose tests (63 total).
 - Create audit identified silently swallowed insertion failures and duplicate-save risk. Added explicit save state, accessible inline failure feedback, guarded repeated submission and tests for retry, duplicate prevention and post-insert onboarding failure. New CI pending. Edit/Archive persistence failures, statistics state wiring and physical-device font/contrast/TalkBack remain to review. No final acceptance claimed.
+
+## Verified checkpoint — Edit and Archive persistence
+- PR #47 archive fix `fd4379c`: [build/unit #328](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45593146895) and [emulator #309](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45593146461) passed.
+- Edit fix `f172a29`: [build/unit #329](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45595784423) and [emulator #310](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45595783931) passed. Edit save waits for persistence, permits retry and preserves the editing form on failure.
+- Statistics now start in Loading, report query failures, suppress misleading summary counts during loading/failure, retain the selected chart type on retry and cancel superseded fetches. Added a ViewModel regression. New CI pending; physical accessibility review remains open.

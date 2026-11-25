@@ -80,7 +80,8 @@ internal fun HabitDetailHeader(
     onArchive: (Habit) -> Unit,
     onDelete: (Habit) -> Unit,
     editSaveState: HabitEditSaveState? = null,
-    onBeginEdit: () -> Unit = {}
+    onBeginEdit: () -> Unit = {},
+    showStats: Boolean = true
 ) {
     var isEditing by remember { mutableStateOf(false) }
     LaunchedEffect(editSaveState) {
@@ -131,6 +132,7 @@ internal fun HabitDetailHeader(
                     HabitHeaderContent(
                         habitDetails = habitDetailState.value,
                         singleStats = singleStats,
+                        showStats = showStats,
                         scrollState = scrollState,
                         onBack = onBack,
                         onEdit = { onBeginEdit(); isEditing = true }
@@ -244,6 +246,7 @@ private fun HabitHeaderEditingContent(
 private fun HabitHeaderContent(
     habitDetails: HabitWithActions,
     singleStats: SingleStats,
+    showStats: Boolean,
     scrollState: ScrollState,
     onBack: () -> Unit,
     onEdit: () -> Unit
@@ -273,11 +276,13 @@ private fun HabitHeaderContent(
                     }
                 }
             }
-            SingleStatRow(
-                totalCount = singleStats.actionCount,
-                weeklyCount = singleStats.weeklyActionCount,
-                completionRate = singleStats.completionRate,
-            )
+            if (showStats) {
+                SingleStatRow(
+                    totalCount = singleStats.actionCount,
+                    weeklyCount = singleStats.weeklyActionCount,
+                    completionRate = singleStats.completionRate,
+                )
+            }
         }
     }
 }

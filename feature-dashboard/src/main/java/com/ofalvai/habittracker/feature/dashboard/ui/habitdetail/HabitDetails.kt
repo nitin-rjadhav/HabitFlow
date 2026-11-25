@@ -233,7 +233,8 @@ internal fun HabitDetailScreen(
         val scrollState = rememberScrollState()
 
         HabitDetailHeader(habitDetailState, singleStats, scrollState, onBack, onEdit, onArchive, onDelete,
-            editSaveState = editSaveState, onBeginEdit = onBeginEdit)
+            editSaveState = editSaveState, onBeginEdit = onBeginEdit,
+            showStats = chartData is Result.Success)
 
         Column(Modifier.verticalScroll(scrollState).padding(16.dp)) {
             when (habitDetailState) {
