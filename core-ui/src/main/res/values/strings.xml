@@ -36,4 +36,10 @@
     <string name="action_text_no_date">No date</string>
     <string name="action_state_not_toggled">Not toggled</string>
     <string name="action_state_toggled">Toggled</string>
+    <string name="habit_color_yellow">Yellow</string>
+    <string name="habit_color_green">Green</string>
+    <string name="habit_color_blue">Blue</string>
+    <string name="habit_color_red">Red</string>
+    <string name="habit_color_cyan">Cyan</string>
+    <string name="habit_color_pink">Pink</string>
 </resources>

@@ -23,7 +23,8 @@ import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,7 +39,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +48,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import com.ofalvai.habittracker.core.ui.R
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -67,7 +73,7 @@ fun HabitColorPicker(
     val colors = remember { Habit.Color.values().toList() }
 
     LazyRow(
-        Modifier.padding(vertical = 32.dp).fillMaxWidth(),
+        Modifier.padding(vertical = 32.dp).fillMaxWidth().selectableGroup(),
         contentPadding = PaddingValues(start = 32.dp, end = 32.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -128,25 +134,36 @@ fun HabitColor(
         }
     }
 
+    val colorLabel = stringResource(when (color) {
+        Habit.Color.Yellow -> R.string.habit_color_yellow
+        Habit.Color.Green -> R.string.habit_color_green
+        Habit.Color.Blue -> R.string.habit_color_blue
+        Habit.Color.Red -> R.string.habit_color_red
+        Habit.Color.Cyan -> R.string.habit_color_cyan
+        Habit.Color.Pink -> R.string.habit_color_pink
+    })
+    val swatch = color.composeColor
+    val checkColor = if (swatch.luminance() > 0.179f) Color.Black else Color.White
     Box(
         modifier = Modifier
             .padding(horizontal = horizontalPadding, vertical = verticalPadding)
             .size(size)
-            .clickable(
+            .selectable(
+                selected = transition.targetState == ColorPickerState.Selected,
                 onClick = onClick,
-                onClickLabel = color.name,
                 role = Role.RadioButton,
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             )
+            .semantics { contentDescription = colorLabel }
             .border(BorderStroke(1.dp, LocalAppColors.current.gray2), CircleShape)
-            .background(color.composeColor, CircleShape)
+            .background(swatch, CircleShape)
             .clip(CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Rounded.Check,
-            tint = MaterialTheme.colorScheme.surface,
+            tint = checkColor,
             contentDescription = null,
             modifier = Modifier.requiredSize(checkmarkSize)
         )

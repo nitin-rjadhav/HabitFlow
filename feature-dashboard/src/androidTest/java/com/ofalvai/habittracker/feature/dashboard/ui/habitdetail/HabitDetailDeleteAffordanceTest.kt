@@ -1,6 +1,14 @@
 package com.ofalvai.habittracker.feature.dashboard.ui.habitdetail
 
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import com.ofalvai.habittracker.core.ui.component.HabitColorPicker
+import com.ofalvai.habittracker.core.ui.theme.AppTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -147,6 +155,30 @@ class HabitDetailDeleteAffordanceTest {
         compose.onNodeWithText("Failed to load habit statistics").assertDoesNotExist()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.runOnIdle { assertEquals(1, backCount) }
+    }
+
+    @Test fun colorPickerAnnouncesSelectionAtLargeFontInLightAndDark() {
+        val dark = mutableStateOf(false)
+        val selected = mutableStateOf(Habit.Color.Yellow)
+        compose.setContent {
+            AppTheme(isDarkTheme = dark.value, isDynamicColor = false) {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.5f)) {
+                    HabitColorPicker(selected.value, onColorPick = { selected.value = it })
+                }
+            }
+        }
+        compose.onNodeWithContentDescription("Yellow").assertIsSelected()
+            .assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        compose.onNodeWithContentDescription("Green").assertIsNotSelected().performClick()
+        compose.onNodeWithContentDescription("Green").assertIsSelected()
+            .assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        compose.onNodeWithContentDescription("Yellow").assertIsNotSelected()
+        compose.runOnIdle { dark.value = true }
+        compose.onNodeWithContentDescription("Green").assertIsSelected()
+        compose.onNodeWithContentDescription("Yellow").performClick()
+        compose.onNodeWithContentDescription("Yellow").assertIsSelected()
+        compose.runOnIdle { assertEquals(Habit.Color.Yellow, selected.value) }
     }
 
     @Test fun cancelConfirmationPreservesHabitAndDoesNotDelete() {
