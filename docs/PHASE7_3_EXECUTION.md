@@ -8,7 +8,8 @@
 
 ## Increment 7.3.1 — Dashboard and calendar
 - [x] Five-Day completion circles now apply the gesture modifier to the full 52dp slot before interior padding (commit `39f7e15`); retain existing long-press, animation, haptics and day semantics.
-- [ ] Verify Five-Day gestures and 52dp hit target on emulator and with TalkBack.
+- [x] Verify Five-Day gestures and 52dp hit target on emulator (run 45544864759).
+- [ ] Verify Five-Day behavior with physical TalkBack.
 - [x] Mini-Calendar completion button now exposes explicit checked/unchecked accessibility state in addition to its existing checkbox role, state label and 48dp minimum height (commit `2fac5aa`). Historical dots remain read-only.
 - [x] Add a focused Android accessibility-tree regression test for Mini-Calendar checkbox checked/unchecked transitions and undo (commit `af67454`).
 - [x] Execute the new Mini-Calendar accessibility test on the emulator (PR #41, run 45128029415).
@@ -46,3 +47,8 @@
 ## Verified checkpoint — Five-Day gestures
 - PR #47 commit `3f4d71e`: [build/unit #322](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45544864700) and [emulator #303](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45544864759) passed. The extended accessibility action test checks the 52dp slot, edge tap without completion, edge long press and undo, and toggle callback counts. Two calendar tests and 52 database tests also passed. Physical TalkBack and large-font acceptance remain open.
 - Edit validation audit: blank names now have a visible localized error and explicit error semantics; Save and Archive use direct button labels and minimum 48dp targets. Added isolated Compose regression for blank-name rejection and recovery; execution still required (default smoke skips the full Compose suite).
+
+## Verified checkpoint — Edit regression and storage audit
+- PR #47 commit `2afcef3`: [build/unit #324](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45571763593) and [emulator #305](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45571763707) passed. Logs confirm 1 Five-Day test, 2 calendar tests, 52 database tests, and 5 isolated Edit/Delete Compose tests. The latter includes blank-name rejection, correction, delete affordance, cancellation and confirmed callback.
+- Existing storage coverage inspected: `ExerciseBackupRestoreTest` (restore replacing prior health state and foreign-key failure rollback), `HabitEntityTest` (action reads, active habit filtering and delete cascade), `ArchiveHandlerTest` (ZIP read/write), `ExportViewModelTest` (restore, unsupported version rejection, receipt-cleanup failure). Both feature-misc and feature-dashboard unit test tasks executed in build #324. Added a targeted archive/unarchive/delete lifecycle test checking selected and unrelated histories; new test execution pending.
+- Dashboard source review found an empty loading branch; history also suppresses loading content. UI-state remediation and large-font/contrast/TalkBack review remain open. No final acceptance or merge approval claimed.
