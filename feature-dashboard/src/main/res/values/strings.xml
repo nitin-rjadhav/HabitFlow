@@ -73,6 +73,7 @@
     <string name="habitdetails_delete_error">Your habit has not been deleted. Please try again.</string>
     <string name="habitdetails_delete_error_dismiss">OK</string>
     <string name="habitdetails_edit_name_label">Name</string>
+    <string name="habitdetails_edit_name_error">Enter a habit name</string>
     <string name="habitdetails_edit_notes_label">Notes</string>
     <string name="habitdetails_error">Failed to load habit details</string>
     <string name="habitdetails_error_stats">Failed to load habit statistics</string>

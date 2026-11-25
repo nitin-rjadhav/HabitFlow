@@ -11,6 +11,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ofalvai.habittracker.core.model.Habit
@@ -35,7 +40,7 @@ class HabitDetailDeleteAffordanceTest {
 
     private val habit = Habit(42, "Morning run", Habit.Color.Green, "Notes")
 
-    private fun render(onDelete: (Habit) -> Unit) {
+    private fun render(onSave: (Habit) -> Unit = {}, onDelete: (Habit) -> Unit) {
         compose.setContent {
             PreviewTheme {
                 HabitDetailHeader(
@@ -46,7 +51,7 @@ class HabitDetailDeleteAffordanceTest {
                     singleStats = SingleStats(null, 0, 0, 0f),
                     scrollState = rememberScrollState(),
                     onBack = {},
-                    onSave = {},
+                    onSave = onSave,
                     onArchive = {},
                     onDelete = onDelete
                 )
@@ -69,6 +74,23 @@ class HabitDetailDeleteAffordanceTest {
         compose.onNodeWithText("Delete habit permanently").performClick()
         compose.runOnIdle { assertEquals(habit, selected) }
     }
+    @Test fun blankEditNameShowsErrorAndBlocksSaveUntilCorrected() {
+        var saved: Habit? = null
+        render(onSave = { saved = it }, onDelete = {})
+        val nameField = hasSetTextAction() and androidx.compose.ui.test.hasText("Morning run")
+        compose.onNode(nameField).performTextReplacement("   ")
+        compose.onNodeWithContentDescription("Save").assertHeightIsAtLeast(48.dp).performClick()
+        compose.onNodeWithText("Enter a habit name").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(null, saved) }
+        compose.onNode(hasSetTextAction() and SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Error, "Enter a habit name"))
+            .performTextReplacement("Evening run")
+        compose.onNodeWithText("Enter a habit name").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Archive").assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithContentDescription("Save").performClick()
+        compose.runOnIdle { assertEquals(habit.copy(name = "Evening run"), saved) }
+    }
+
     @Test fun cancelConfirmationPreservesHabitAndDoesNotDelete() {
         var deleteCount = 0
         compose.setContent {
