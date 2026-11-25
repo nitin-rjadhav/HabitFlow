@@ -95,11 +95,13 @@ fun HabitDetailScreen(
 
     val habitDetailState by viewModel.habitWithActions.collectAsState()
     var showDeleteError by remember { mutableStateOf(false) }
+    var showArchiveError by remember { mutableStateOf(false) }
 
     viewModel.habitDetailEvent.asEffect {
         when (it) {
             HabitDetailEvent.BackNavigation -> navigateBack()
             HabitDetailEvent.DeleteError -> showDeleteError = true
+            HabitDetailEvent.ArchiveError -> showArchiveError = true
         }
     }
 
@@ -132,7 +134,7 @@ fun HabitDetailScreen(
         title = stringResource(R.string.habitdetails_archive_title),
         description = stringResource(R.string.habitdetails_archive_description),
         confirmText = stringResource(R.string.habitdetails_archive_confirm),
-        onDismiss = { showArchiveDialog = false },
+        onDismiss = { showArchiveDialog = false; pendingHabitToArchive = null },
         onConfirm = {
             pendingHabitToArchive?.let { viewModel.archiveHabit(it) }
             pendingHabitToArchive = null
@@ -149,6 +151,18 @@ fun HabitDetailScreen(
             viewModel.deleteHabit(habit)
         }
     )
+    if (showArchiveError) {
+        AlertDialog(
+            onDismissRequest = { showArchiveError = false },
+            title = { Text(stringResource(R.string.habitdetails_archive_error_title)) },
+            text = { Text(stringResource(R.string.habitdetails_archive_error)) },
+            confirmButton = {
+                TextButton(onClick = { showArchiveError = false }) {
+                    Text(stringResource(R.string.habitdetails_delete_error_dismiss))
+                }
+            }
+        )
+    }
     if (showDeleteError) {
         AlertDialog(
             onDismissRequest = { showDeleteError = false },

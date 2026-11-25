@@ -43,6 +43,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,7 +58,8 @@ private val initialChartData = ActionCountChart(persistentListOf(), ActionCountC
 
 enum class HabitDetailEvent {
     BackNavigation,
-    DeleteError
+    DeleteError,
+    ArchiveError
 }
 
 @HiltViewModel
@@ -150,8 +152,15 @@ class HabitDetailViewModel @Inject constructor(
 
     fun archiveHabit(habit: Habit) {
         viewModelScope.launch {
-            dao.updateHabit(habit.toEntity(order = habitOrder ?: 0, archived = true))
-            eventChannel.send(HabitDetailEvent.BackNavigation)
+            try {
+                dao.updateHabit(habit.toEntity(order = habitOrder ?: 0, archived = true))
+                eventChannel.send(HabitDetailEvent.BackNavigation)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                telemetry.logNonFatal(e)
+                eventChannel.send(HabitDetailEvent.ArchiveError)
+            }
         }
     }
 

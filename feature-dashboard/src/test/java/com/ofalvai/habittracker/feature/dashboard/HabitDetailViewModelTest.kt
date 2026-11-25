@@ -11,6 +11,7 @@ import com.ofalvai.habittracker.feature.dashboard.repo.ActionRepository
 import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitDetailEvent
 import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitDetailViewModel
 import kotlinx.coroutines.test.runTest
+import com.ofalvai.habittracker.feature.dashboard.mapper.toEntity
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -48,6 +49,20 @@ class HabitDetailViewModelTest {
             expectNoEvents()
         }
         verify(dao).deleteHabit(HabitById(42))
+        verify(telemetry).logNonFatal(failure)
+    }
+
+    @Test fun archiveFailureReportsErrorWithoutNavigating() = runTest {
+        val entity = habit.toEntity(order = 0, archived = true)
+        val failure = IllegalStateException("Synthetic archive failure")
+        whenever(dao.updateHabit(entity)).thenThrow(failure)
+        val vm = viewModel()
+        vm.habitDetailEvent.test {
+            vm.archiveHabit(habit)
+            assertEquals(HabitDetailEvent.ArchiveError, awaitItem())
+            expectNoEvents()
+        }
+        verify(dao).updateHabit(entity)
         verify(telemetry).logNonFatal(failure)
     }
 }
