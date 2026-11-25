@@ -11,6 +11,9 @@ import com.ofalvai.habittracker.feature.dashboard.repo.ActionRepository
 import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitDetailEvent
 import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitDetailViewModel
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
+import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitEditSaveState
+import com.ofalvai.habittracker.core.database.entity.HabitWithActions
 import com.ofalvai.habittracker.feature.dashboard.mapper.toEntity
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -64,5 +67,23 @@ class HabitDetailViewModelTest {
         }
         verify(dao).updateHabit(entity)
         verify(telemetry).logNonFatal(failure)
+    }
+
+    @Test fun failedEditCanBeRetriedWithoutDuplicateUpdate() = runTest {
+        val entity = habit.toEntity(order = 0, archived = false)
+        val failure = IllegalStateException("Synthetic update failure")
+        whenever(dao.updateHabit(entity)).thenThrow(failure).thenReturn(Unit)
+        whenever(dao.getHabitWithActions(habit.id)).thenReturn(HabitWithActions(entity, emptyList()))
+        val vm = viewModel()
+        vm.updateHabit(habit)
+        runCurrent()
+        assertEquals(HabitEditSaveState.Failed, vm.editSaveState.value)
+        vm.updateHabit(habit)
+        vm.updateHabit(habit)
+        runCurrent()
+        assertEquals(HabitEditSaveState.Saved, vm.editSaveState.value)
+        verify(dao, times(2)).updateHabit(entity)
+        vm.beginEdit()
+        assertEquals(HabitEditSaveState.Idle, vm.editSaveState.value)
     }
 }

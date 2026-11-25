@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -76,9 +78,14 @@ internal fun HabitDetailHeader(
     onBack: () -> Unit,
     onSave: (Habit) -> Unit,
     onArchive: (Habit) -> Unit,
-    onDelete: (Habit) -> Unit
+    onDelete: (Habit) -> Unit,
+    editSaveState: HabitEditSaveState? = null,
+    onBeginEdit: () -> Unit = {}
 ) {
     var isEditing by remember { mutableStateOf(false) }
+    LaunchedEffect(editSaveState) {
+        if (editSaveState == HabitEditSaveState.Saved) isEditing = false
+    }
 
     val backgroundColor by animateColorAsState(
         targetValue = when (habitDetailState) {
@@ -111,11 +118,12 @@ internal fun HabitDetailHeader(
                         habitDetails = habitDetailState.value,
                         onBack = onBack,
                         onSave = {
-                            isEditing = false
+                            if (editSaveState == null) isEditing = false
                             onSave(it)
                         },
                         onArchive = onArchive,
-                        onDelete = onDelete
+                        onDelete = onDelete,
+                        editSaveState = editSaveState
                     )
                 }
 
@@ -125,7 +133,7 @@ internal fun HabitDetailHeader(
                         singleStats = singleStats,
                         scrollState = scrollState,
                         onBack = onBack,
-                        onEdit = { isEditing = true }
+                        onEdit = { onBeginEdit(); isEditing = true }
                     )
                 }
             }
@@ -139,8 +147,10 @@ private fun HabitHeaderEditingContent(
     onBack: () -> Unit,
     onSave: (Habit) -> Unit,
     onArchive: (Habit) -> Unit,
-    onDelete: (Habit) -> Unit
+    onDelete: (Habit) -> Unit,
+    editSaveState: HabitEditSaveState?
 ) {
+    val saving = editSaveState == HabitEditSaveState.Saving
     var editingName by remember(habitDetails.habit.name) {
         mutableStateOf(habitDetails.habit.name)
     }
@@ -166,10 +176,19 @@ private fun HabitHeaderEditingContent(
         HabitDetailEditingAppBar(
             onBack = onBack,
             onSave = onSaveClick,
-            onArchive = { onArchive(habitDetails.habit) }
+            onArchive = { onArchive(habitDetails.habit) },
+            saving = saving
         )
+        if (editSaveState == HabitEditSaveState.Failed) {
+            TextFieldError(
+                modifier = Modifier.padding(horizontal = 32.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+                textError = stringResource(R.string.habitdetails_edit_save_error)
+            )
+        }
         OutlinedTextField(
             value = editingName,
+            enabled = !saving,
             onValueChange = {
                 editingName = it
                 isNameValid = it.isNotBlank()
@@ -192,6 +211,7 @@ private fun HabitHeaderEditingContent(
         }
         OutlinedTextField(
             value = editingNotes,
+            enabled = !saving,
             onValueChange = { editingNotes = it },
             label = { Text(stringResource(R.string.habitdetails_edit_notes_label)) },
             modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 16.dp).fillMaxWidth(),
@@ -201,7 +221,7 @@ private fun HabitHeaderEditingContent(
         )
         HabitColorPicker(
             color = editingColor,
-            onColorPick = { editingColor = it }
+            onColorPick = { if (!saving) editingColor = it }
         )
         // Destructive action is visually distinct from the non-destructive Archive.
         OutlinedButton(
@@ -210,6 +230,7 @@ private fun HabitHeaderEditingContent(
                 .padding(horizontal = 32.dp, vertical = 8.dp)
                 .heightIn(min = AppDimensions.minTouchTarget),
             onClick = { onDelete(habitDetails.habit) },
+            enabled = !saving,
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.error
             )
@@ -329,10 +350,11 @@ private fun HabitDetailAppBar(
 private fun HabitDetailEditingAppBar(
     onBack: () -> Unit,
     onSave: () -> Unit,
-    onArchive: () -> Unit
+    onArchive: () -> Unit,
+    saving: Boolean
 ) {
     TopAppBar(
-        title = { },
+        title = { if (saving) Text(stringResource(R.string.habitdetails_edit_saving)) },
         navigationIcon = {
             IconButton(onClick = onBack) { TopAppBarNavIcon() }
         },
@@ -341,6 +363,7 @@ private fun HabitDetailEditingAppBar(
             val archiveLabel = stringResource(coreR.string.common_archive)
             IconButton(
                 onClick = onSave,
+                enabled = !saving,
                 modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                     .semantics { contentDescription = saveLabel }
             ) {
@@ -348,6 +371,7 @@ private fun HabitDetailEditingAppBar(
             }
             IconButton(
                 onClick = onArchive,
+                enabled = !saving,
                 modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                     .semantics { contentDescription = archiveLabel }
             ) {

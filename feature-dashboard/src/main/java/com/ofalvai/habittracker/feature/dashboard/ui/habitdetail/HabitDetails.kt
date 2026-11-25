@@ -96,6 +96,7 @@ fun HabitDetailScreen(
     val habitDetailState by viewModel.habitWithActions.collectAsState()
     var showDeleteError by remember { mutableStateOf(false) }
     var showArchiveError by remember { mutableStateOf(false) }
+    val editSaveState by viewModel.editSaveState.collectAsState()
 
     viewModel.habitDetailEvent.asEffect {
         when (it) {
@@ -185,7 +186,9 @@ fun HabitDetailScreen(
         onEdit = { viewModel.updateHabit(it) },
         onArchive = onArchive,
         onDelete = { pendingHabitToDelete = it },
-        onDayToggle = onDayToggle
+        onDayToggle = onDayToggle,
+        editSaveState = editSaveState,
+        onBeginEdit = viewModel::beginEdit
     )
 }
 
@@ -223,11 +226,14 @@ internal fun HabitDetailScreen(
     onArchive: (Habit) -> Unit,
     onDelete: (Habit) -> Unit,
     onDayToggle: (LocalDate, Action) -> Unit,
+    editSaveState: HabitEditSaveState? = null,
+    onBeginEdit: () -> Unit = {},
 ) {
     Column(Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()) {
         val scrollState = rememberScrollState()
 
-        HabitDetailHeader(habitDetailState, singleStats, scrollState, onBack, onEdit, onArchive, onDelete)
+        HabitDetailHeader(habitDetailState, singleStats, scrollState, onBack, onEdit, onArchive, onDelete,
+            editSaveState = editSaveState, onBeginEdit = onBeginEdit)
 
         Column(Modifier.verticalScroll(scrollState).padding(16.dp)) {
             when (habitDetailState) {

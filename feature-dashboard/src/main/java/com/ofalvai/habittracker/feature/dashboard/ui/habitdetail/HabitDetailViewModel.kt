@@ -47,6 +47,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -62,6 +63,8 @@ enum class HabitDetailEvent {
     ArchiveError
 }
 
+enum class HabitEditSaveState { Idle, Saving, Failed, Saved }
+
 @HiltViewModel
 class HabitDetailViewModel @Inject constructor(
     private val dao: HabitDao,
@@ -73,6 +76,9 @@ class HabitDetailViewModel @Inject constructor(
     val habitWithActions = MutableStateFlow<Result<HabitWithActions>>(Result.Loading)
     val singleStats = MutableStateFlow(initialSingleStats)
     val chartData = MutableStateFlow<Result<ActionCountChart>>(Result.Success(initialChartData))
+
+    private val mutableEditSaveState = MutableStateFlow(HabitEditSaveState.Idle)
+    val editSaveState = mutableEditSaveState.asStateFlow()
 
     private val eventChannel = Channel<HabitDetailEvent>(Channel.BUFFERED)
     val habitDetailEvent = eventChannel.receiveAsFlow()
@@ -143,10 +149,29 @@ class HabitDetailViewModel @Inject constructor(
         }
     }
 
+    fun beginEdit() {
+        if (mutableEditSaveState.value != HabitEditSaveState.Saving) {
+            mutableEditSaveState.value = HabitEditSaveState.Idle
+        }
+    }
+
     fun updateHabit(habit: Habit) {
+        val previous = mutableEditSaveState.value
+        if (previous != HabitEditSaveState.Idle && previous != HabitEditSaveState.Failed) return
+        if (!mutableEditSaveState.compareAndSet(previous, HabitEditSaveState.Saving)) return
         viewModelScope.launch {
-            dao.updateHabit(habit.toEntity(order = habitOrder ?: 0, archived = false))
-            fetchHabitDetails(habit.id)
+            try {
+                dao.updateHabit(habit.toEntity(order = habitOrder ?: 0, archived = false))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                mutableEditSaveState.value = HabitEditSaveState.Failed
+                telemetry.logNonFatal(e)
+                return@launch
+            }
+            // Refresh after confirmed persistence; do not classify refresh failure as a failed write.
+            fetchHabitDetails(habit.id).join()
+            mutableEditSaveState.value = HabitEditSaveState.Saved
         }
     }
 
