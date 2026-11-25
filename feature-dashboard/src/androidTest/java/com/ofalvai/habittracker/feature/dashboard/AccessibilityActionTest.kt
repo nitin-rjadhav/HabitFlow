@@ -1,6 +1,11 @@
 package com.ofalvai.habittracker.feature.dashboard
 
 import android.util.Log
+import android.graphics.Rect
+import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +18,8 @@ import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.fiveday.ActionCircle
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,10 +37,14 @@ class AccessibilityActionTest {
         Log.i(tag, "STAGE 1: test body entered")
         val completed = mutableStateOf(false)
         val stateObserved = AtomicBoolean(false)
+        val singlePressCount = AtomicInteger(0)
+        val toggleCount = AtomicInteger(0)
+        var density = 1f
         Log.i(tag, "STAGE 2: launching activity")
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             Log.i(tag, "STAGE 3: activity launched")
             scenario.onActivity { activity ->
+                density = activity.resources.displayMetrics.density
                 activity.setContent {
                     PreviewTheme {
                         ActionCircle(
@@ -41,10 +52,11 @@ class AccessibilityActionTest {
                             action = Action(id = 1, toggled = completed.value, timestamp = null),
                             onToggle = {
                                 completed.value = it
+                                toggleCount.incrementAndGet()
                                 stateObserved.set(it)
                             },
                             isHighlighted = true,
-                            onSinglePress = {}
+                            onSinglePress = { singlePressCount.incrementAndGet() }
                         )
                     }
                 }
@@ -60,6 +72,82 @@ class AccessibilityActionTest {
             Log.i(tag, "STAGE 7: undo ACTION_CLICK accepted")
             waitForState(stateObserved, false)
             Log.i(tag, "STAGE 8: undo verified")
+
+            // AnimatedContent retains outgoing nodes during its transition.
+            // Wait for the 500ms transition before measuring the stable slot.
+            Thread.sleep(700)
+            val bounds = actionBounds("Mark Done")
+            assertTrue("Five-Day width: $bounds (density $density)", bounds.width() + 1 >= 52 * density)
+            assertTrue("Five-Day height: $bounds (density $density)", bounds.height() + 1 >= 52 * density)
+
+            // Touch inside the 4dp padding, where the former gesture target
+            // could miss input. A short press must not toggle completion.
+            val edgeX = bounds.left + density
+            val centerY = bounds.exactCenterY()
+            injectPress(edgeX, centerY, 50L)
+            repeat(40) {
+                if (singlePressCount.get() == 0) Thread.sleep(250)
+            }
+            assertEquals("One short press", 1, singlePressCount.get())
+            assertEquals("No toggle on short press", 2, toggleCount.get())
+            assertTrue(!stateObserved.get())
+
+            injectPress(edgeX, centerY, ViewConfiguration.getLongPressTimeout().toLong() + 300L)
+            waitForState(stateObserved, true)
+            assertEquals("Long press toggles once", 3, toggleCount.get())
+            assertEquals("Long press must not count as a short press", 1, singlePressCount.get())
+
+            Thread.sleep(700)
+            val completedBounds = actionBounds("Mark not done")
+            injectPress(completedBounds.left + density, completedBounds.exactCenterY(),
+                ViewConfiguration.getLongPressTimeout().toLong() + 300L)
+            waitForState(stateObserved, false)
+            assertEquals("Second long press undoes completion", 4, toggleCount.get())
+            assertEquals("Only one short press", 1, singlePressCount.get())
+            Log.i(tag, "STAGE 9: 52dp bounds, edge tap, long press and undo verified")
+        }
+    }
+
+    private fun actionBounds(expectedActionLabel: String): Rect {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        repeat(40) {
+            val root = automation.rootInActiveWindow
+            if (root != null) {
+                try {
+                    val target = findClickableAction(root, expectedActionLabel)
+                    if (target != null) {
+                        try {
+                            return Rect().also { target.getBoundsInScreen(it) }
+                        } finally {
+                            target.recycle()
+                        }
+                    }
+                } finally {
+                    root.recycle()
+                }
+            }
+            Thread.sleep(250)
+        }
+        throw AssertionError("No Five-Day action bounds for $expectedActionLabel")
+    }
+
+    private fun injectPress(x: Float, y: Float, durationMillis: Long) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val downTime = SystemClock.uptimeMillis()
+        fun send(action: Int) {
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x, y, 0)
+            try {
+                event.source = InputDevice.SOURCE_TOUCHSCREEN
+                assertTrue("Touch injection failed: $action", automation.injectInputEvent(event, true))
+            } finally {
+                event.recycle()
+            }
+        }
+        send(MotionEvent.ACTION_DOWN)
+        try {
+            Thread.sleep(durationMillis)
+        } finally {
+            send(MotionEvent.ACTION_UP)
         }
     }
 

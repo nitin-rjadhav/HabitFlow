@@ -75,6 +75,7 @@ import com.ofalvai.habittracker.core.ui.state.asEffect
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.core.ui.theme.composeColor
 import com.ofalvai.habittracker.feature.dashboard.R
+import com.ofalvai.habittracker.feature.dashboard.ui.DashboardLoading
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.vibrateCompat
 import com.ofalvai.habittracker.feature.dashboard.ui.model.ActionCountChart
 import com.ofalvai.habittracker.feature.dashboard.ui.model.SingleStats
@@ -94,11 +95,14 @@ fun HabitDetailScreen(
 
     val habitDetailState by viewModel.habitWithActions.collectAsState()
     var showDeleteError by remember { mutableStateOf(false) }
+    var showArchiveError by remember { mutableStateOf(false) }
+    val editSaveState by viewModel.editSaveState.collectAsState()
 
     viewModel.habitDetailEvent.asEffect {
         when (it) {
             HabitDetailEvent.BackNavigation -> navigateBack()
             HabitDetailEvent.DeleteError -> showDeleteError = true
+            HabitDetailEvent.ArchiveError -> showArchiveError = true
         }
     }
 
@@ -131,7 +135,7 @@ fun HabitDetailScreen(
         title = stringResource(R.string.habitdetails_archive_title),
         description = stringResource(R.string.habitdetails_archive_description),
         confirmText = stringResource(R.string.habitdetails_archive_confirm),
-        onDismiss = { showArchiveDialog = false },
+        onDismiss = { showArchiveDialog = false; pendingHabitToArchive = null },
         onConfirm = {
             pendingHabitToArchive?.let { viewModel.archiveHabit(it) }
             pendingHabitToArchive = null
@@ -148,6 +152,18 @@ fun HabitDetailScreen(
             viewModel.deleteHabit(habit)
         }
     )
+    if (showArchiveError) {
+        AlertDialog(
+            onDismissRequest = { showArchiveError = false },
+            title = { Text(stringResource(R.string.habitdetails_archive_error_title)) },
+            text = { Text(stringResource(R.string.habitdetails_archive_error)) },
+            confirmButton = {
+                TextButton(onClick = { showArchiveError = false }) {
+                    Text(stringResource(R.string.habitdetails_delete_error_dismiss))
+                }
+            }
+        )
+    }
     if (showDeleteError) {
         AlertDialog(
             onDismissRequest = { showDeleteError = false },
@@ -170,7 +186,9 @@ fun HabitDetailScreen(
         onEdit = { viewModel.updateHabit(it) },
         onArchive = onArchive,
         onDelete = { pendingHabitToDelete = it },
-        onDayToggle = onDayToggle
+        onDayToggle = onDayToggle,
+        editSaveState = editSaveState,
+        onBeginEdit = viewModel::beginEdit
     )
 }
 
@@ -198,7 +216,7 @@ internal fun DeleteHabitConfirmationDialog(
 }
 
 @Composable
-private fun HabitDetailScreen(
+internal fun HabitDetailScreen(
     habitDetailState: Result<HabitWithActions>,
     singleStats: SingleStats,
     chartData: Result<ActionCountChart>,
@@ -208,35 +226,32 @@ private fun HabitDetailScreen(
     onArchive: (Habit) -> Unit,
     onDelete: (Habit) -> Unit,
     onDayToggle: (LocalDate, Action) -> Unit,
+    editSaveState: HabitEditSaveState? = null,
+    onBeginEdit: () -> Unit = {},
 ) {
     Column(Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()) {
         val scrollState = rememberScrollState()
 
-        HabitDetailHeader(habitDetailState, singleStats, scrollState, onBack, onEdit, onArchive, onDelete)
+        HabitDetailHeader(habitDetailState, singleStats, scrollState, onBack, onEdit, onArchive, onDelete,
+            editSaveState = editSaveState, onBeginEdit = onBeginEdit,
+            showStats = chartData is Result.Success)
 
         Column(Modifier.verticalScroll(scrollState).padding(16.dp)) {
             when (habitDetailState) {
-                is Result.Success -> Calendar(habitDetailState, onDayToggle)
-                Result.Loading -> {
-                    // No calendar and stats in loading state
+                is Result.Success -> {
+                    Calendar(habitDetailState, onDayToggle)
+                    when (chartData) {
+                        is Result.Success -> HabitStats(chartData.value, onChartTypeChange)
+                        is Result.Failure -> ErrorView(
+                            label = stringResource(R.string.habitdetails_error_stats),
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
+                        Result.Loading -> DashboardLoading(stringResource(R.string.habitdetails_stats_loading))
+                    }
                 }
-                is Result.Failure -> {
-                    ErrorView(
-                        label = stringResource(R.string.habitdetails_error_stats),
-                        modifier = Modifier.padding(top = 64.dp)
-                    )
-                }
-            }
-
-            when (chartData) {
-                is Result.Success -> HabitStats(chartData.value, onChartTypeChange)
-                is Result.Failure -> ErrorView(
-                    label = stringResource(R.string.habitdetails_error_stats),
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-                Result.Loading -> {
-                    // No chart in loading state
-                }
+                Result.Loading -> DashboardLoading(stringResource(R.string.habitdetails_loading))
+                // Header already shows the error and Back navigation.
+                is Result.Failure -> Unit
             }
 
             // Add some scrollable empty space. This helps the collapsible header avoid oscillating

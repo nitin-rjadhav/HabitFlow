@@ -1,6 +1,14 @@
 package com.ofalvai.habittracker.feature.dashboard.ui.habitdetail
 
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import com.ofalvai.habittracker.core.ui.component.HabitColorPicker
+import com.ofalvai.habittracker.core.ui.theme.AppTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,6 +19,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ofalvai.habittracker.core.model.Habit
@@ -18,6 +31,9 @@ import com.ofalvai.habittracker.core.model.HabitWithActions
 import com.ofalvai.habittracker.core.ui.state.Result
 import com.ofalvai.habittracker.core.ui.theme.PreviewTheme
 import com.ofalvai.habittracker.feature.dashboard.ui.model.SingleStats
+import com.ofalvai.habittracker.feature.dashboard.ui.model.DashboardConfig
+import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.DashboardContent
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -35,7 +51,7 @@ class HabitDetailDeleteAffordanceTest {
 
     private val habit = Habit(42, "Morning run", Habit.Color.Green, "Notes")
 
-    private fun render(onDelete: (Habit) -> Unit) {
+    private fun render(onSave: (Habit) -> Unit = {}, onDelete: (Habit) -> Unit) {
         compose.setContent {
             PreviewTheme {
                 HabitDetailHeader(
@@ -46,7 +62,7 @@ class HabitDetailDeleteAffordanceTest {
                     singleStats = SingleStats(null, 0, 0, 0f),
                     scrollState = rememberScrollState(),
                     onBack = {},
-                    onSave = {},
+                    onSave = onSave,
                     onArchive = {},
                     onDelete = onDelete
                 )
@@ -69,6 +85,102 @@ class HabitDetailDeleteAffordanceTest {
         compose.onNodeWithText("Delete habit permanently").performClick()
         compose.runOnIdle { assertEquals(habit, selected) }
     }
+    @Test fun blankEditNameShowsErrorAndBlocksSaveUntilCorrected() {
+        var saved: Habit? = null
+        render(onSave = { saved = it }, onDelete = {})
+        val nameField = hasSetTextAction() and androidx.compose.ui.test.hasText("Morning run")
+        compose.onNode(nameField).performTextReplacement("   ")
+        compose.onNodeWithContentDescription("Save").assertHeightIsAtLeast(48.dp).performClick()
+        compose.onNodeWithText("Enter a habit name").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(null, saved) }
+        compose.onNode(hasSetTextAction() and SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Error, "Enter a habit name"))
+            .performTextReplacement("Evening run")
+        compose.onNodeWithText("Enter a habit name").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Archive").assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithContentDescription("Save").performClick()
+        compose.runOnIdle { assertEquals(habit.copy(name = "Evening run"), saved) }
+    }
+
+    @Test fun dashboardLoadingEmptyAndFailureAreDistinct() {
+        val state = mutableStateOf<Result<ImmutableList<HabitWithActions>>>(Result.Loading)
+        var addCount = 0
+        compose.setContent {
+            PreviewTheme {
+                DashboardContent(
+                    habits = state.value, config = DashboardConfig.FiveDay,
+                    onboardingState = null, exerciseActionIds = emptySet(),
+                    onAddHabitClick = { addCount++ }, onConfigClick = {},
+                    onActionToggle = { _, _, _ -> }, onHabitDetail = {},
+                    onSettingsClick = {}, onArchiveClick = {}, onExportClick = {},
+                    onMove = {}
+                )
+            }
+        }
+        compose.onNodeWithText("Loading habits…").assertIsDisplayed()
+        compose.onNodeWithText("Create your first habit").assertDoesNotExist()
+        compose.runOnIdle { state.value = Result.Success(persistentListOf()) }
+        compose.onNodeWithText("Loading habits…").assertDoesNotExist()
+        compose.onNodeWithText("You don't have any habits yet.").assertIsDisplayed()
+        compose.onNodeWithText("Create your first habit").performClick()
+        compose.runOnIdle {
+            assertEquals(1, addCount)
+            state.value = Result.Failure(IllegalStateException("synthetic"))
+        }
+        compose.onNodeWithText("Failed to load habit list").assertIsDisplayed()
+        compose.onNodeWithText("My habits").assertIsDisplayed()
+        compose.onNodeWithText("Create your first habit").assertDoesNotExist()
+    }
+
+    @Test fun detailLoadingAndFailureRetainBackNavigation() {
+        val state = mutableStateOf<Result<HabitWithActions>>(Result.Loading)
+        var backCount = 0
+        compose.setContent {
+            PreviewTheme {
+                HabitDetailScreen(
+                    habitDetailState = state.value,
+                    singleStats = SingleStats(null, 0, 0, 0f),
+                    chartData = Result.Loading,
+                    onChartTypeChange = {},
+                    onBack = { backCount++ }, onEdit = {}, onArchive = {},
+                    onDelete = {}, onDayToggle = { _, _ -> }
+                )
+            }
+        }
+        compose.onNodeWithText("Loading habit details…").assertIsDisplayed()
+        compose.onNodeWithText("Loading habit statistics…").assertDoesNotExist()
+        compose.runOnIdle { state.value = Result.Failure(IllegalStateException("synthetic")) }
+        compose.onNodeWithText("Loading habit details…").assertDoesNotExist()
+        compose.onNodeWithText("Failed to load habit details").assertIsDisplayed()
+        compose.onNodeWithText("Failed to load habit statistics").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.runOnIdle { assertEquals(1, backCount) }
+    }
+
+    @Test fun colorPickerAnnouncesSelectionAtLargeFontInLightAndDark() {
+        val dark = mutableStateOf(false)
+        val selected = mutableStateOf(Habit.Color.Yellow)
+        compose.setContent {
+            AppTheme(isDarkTheme = dark.value, isDynamicColor = false) {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.5f)) {
+                    HabitColorPicker(selected.value, onColorPick = { selected.value = it })
+                }
+            }
+        }
+        compose.onNodeWithContentDescription("Yellow").assertIsSelected()
+            .assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        compose.onNodeWithContentDescription("Green").assertIsNotSelected().performClick()
+        compose.onNodeWithContentDescription("Green").assertIsSelected()
+            .assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        compose.onNodeWithContentDescription("Yellow").assertIsNotSelected()
+        compose.runOnIdle { dark.value = true }
+        compose.onNodeWithContentDescription("Green").assertIsSelected()
+        compose.onNodeWithContentDescription("Yellow").performClick()
+        compose.onNodeWithContentDescription("Yellow").assertIsSelected()
+        compose.runOnIdle { assertEquals(Habit.Color.Yellow, selected.value) }
+    }
+
     @Test fun cancelConfirmationPreservesHabitAndDoesNotDelete() {
         var deleteCount = 0
         compose.setContent {

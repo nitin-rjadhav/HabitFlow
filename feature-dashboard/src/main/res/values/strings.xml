@@ -21,6 +21,8 @@
     <string name="addhabit_notes_label">Notes</string>
     <string name="addhabit_notes_description">Recording the exact time and location of the new habit increases the odds of sticking to it. Avoid vague habits like \"Exercise more\".</string>
     <string name="addhabit_save">Create habit</string>
+    <string name="addhabit_saving">Saving habit…</string>
+    <string name="addhabit_save_error">Unable to create habit. Please try again.</string>
 
     <string name="dashboard_title">My habits</string>
     <string name="dashboard_exercise_completion_badge">Completed via Health Connect</string>
@@ -36,6 +38,7 @@
     <string name="dashboard_create_habit">Create new habit</string>
     <string name="dashboard_create_habit_first">Create your first habit</string>
     <string name="dashboard_item_details">Habit details</string>
+    <string name="dashboard_loading">Loading habits…</string>
     <string name="dashboard_error">Failed to load habit list</string>
     <string name="dashboard_error_toggle_action">Failed to save action</string>
     <string name="dashboard_error_item_move">Failed to move habit, try again</string>
@@ -73,7 +76,14 @@
     <string name="habitdetails_delete_error">Your habit has not been deleted. Please try again.</string>
     <string name="habitdetails_delete_error_dismiss">OK</string>
     <string name="habitdetails_edit_name_label">Name</string>
+    <string name="habitdetails_archive_error_title">Unable to archive habit</string>
+    <string name="habitdetails_archive_error">Your habit has not been archived. Please try again.</string>
+    <string name="habitdetails_edit_save_error">Unable to save changes. Please try again.</string>
+    <string name="habitdetails_edit_saving">Saving changes…</string>
+    <string name="habitdetails_edit_name_error">Enter a habit name</string>
     <string name="habitdetails_edit_notes_label">Notes</string>
+    <string name="habitdetails_loading">Loading habit details…</string>
+    <string name="habitdetails_stats_loading">Loading habit statistics…</string>
     <string name="habitdetails_error">Failed to load habit details</string>
     <string name="habitdetails_error_stats">Failed to load habit statistics</string>
     <string name="habitdetails_actioncount_selector_label">Times a</string>

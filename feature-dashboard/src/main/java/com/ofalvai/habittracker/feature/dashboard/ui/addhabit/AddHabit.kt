@@ -42,6 +42,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -65,6 +67,7 @@ import com.ofalvai.habittracker.core.ui.R as coreR
 fun AddHabitScreen(viewModel: AddHabitViewModel, navigateBack: () -> Unit) {
     viewModel.backNavigationEvent.asEffect { navigateBack() }
 
+    val saveState by viewModel.saveState.collectAsState()
     val onSave: (Habit) -> Unit = { viewModel.addHabit(it) }
 
     Column(
@@ -74,14 +77,15 @@ fun AddHabitScreen(viewModel: AddHabitViewModel, navigateBack: () -> Unit) {
             .verticalScroll(rememberScrollState())
     ) {
         AddHabitAppBar(onBack = navigateBack)
-        AddHabitForm(onSave)
+        AddHabitForm(onSave, saveState)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddHabitForm(
-    onSave: (Habit) -> Unit
+    onSave: (Habit) -> Unit,
+    saveState: AddHabitSaveState = AddHabitSaveState.Idle
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var notes by rememberSaveable { mutableStateOf("") }
@@ -167,17 +171,27 @@ fun AddHabitForm(
 
         HabitColorPicker(color = color, onColorPick = { color = it })
 
+        if (saveState == AddHabitSaveState.Failed) {
+            TextFieldError(
+                modifier = Modifier.padding(horizontal = AppDimensions.spacingXl)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+                textError = stringResource(R.string.addhabit_save_error)
+            )
+        }
+
         Button(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = AppDimensions.spacingMd, start = AppDimensions.spacingXl, end = AppDimensions.spacingXl)
                 .heightIn(min = 48.dp),
             onClick = onSaveClick,
+            enabled = saveState == AddHabitSaveState.Idle || saveState == AddHabitSaveState.Failed,
             colors = ButtonDefaults.buttonColors(containerColor = selectedHabitColor)
         ) {
             Text(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                text = stringResource(R.string.addhabit_save)
+                text = stringResource(if (saveState == AddHabitSaveState.Saving)
+                    R.string.addhabit_saving else R.string.addhabit_save)
             )
         }
     }

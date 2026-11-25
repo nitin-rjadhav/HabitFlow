@@ -40,12 +40,13 @@ import com.ofalvai.habittracker.feature.dashboard.ui.model.ActionCountByWeek
 import com.ofalvai.habittracker.feature.dashboard.ui.model.ActionCountChart
 import com.ofalvai.habittracker.feature.dashboard.ui.model.SingleStats
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -53,12 +54,14 @@ import java.util.Locale
 import javax.inject.Inject
 
 private val initialSingleStats = SingleStats(null, 0, 0, 0f)
-private val initialChartData = ActionCountChart(persistentListOf(), ActionCountChart.Type.Weekly)
 
 enum class HabitDetailEvent {
     BackNavigation,
-    DeleteError
+    DeleteError,
+    ArchiveError
 }
+
+enum class HabitEditSaveState { Idle, Saving, Failed, Saved }
 
 @HiltViewModel
 class HabitDetailViewModel @Inject constructor(
@@ -70,7 +73,12 @@ class HabitDetailViewModel @Inject constructor(
 
     val habitWithActions = MutableStateFlow<Result<HabitWithActions>>(Result.Loading)
     val singleStats = MutableStateFlow(initialSingleStats)
-    val chartData = MutableStateFlow<Result<ActionCountChart>>(Result.Success(initialChartData))
+    val chartData = MutableStateFlow<Result<ActionCountChart>>(Result.Loading)
+    private var selectedChartType = ActionCountChart.Type.Weekly
+    private var statsJob: Job? = null
+
+    private val mutableEditSaveState = MutableStateFlow(HabitEditSaveState.Idle)
+    val editSaveState = mutableEditSaveState.asStateFlow()
 
     private val eventChannel = Channel<HabitDetailEvent>(Channel.BUFFERED)
     val habitDetailEvent = eventChannel.receiveAsFlow()
@@ -110,27 +118,31 @@ class HabitDetailViewModel @Inject constructor(
     }
 
     fun fetchHabitStats(habitId: Int): Job {
+        statsJob?.cancel()
+        chartData.value = Result.Loading
         return viewModelScope.launch {
             try {
-                val completionRate = async { dao.getCompletionRate(habitId) }
-                val actionCountByWeekEntity = async { dao.getActionCountByWeek(habitId) }
-                val actionCountByMonthEntity = async { dao.getActionCountByMonth(habitId) }
-
-                singleStats.value = mapHabitSingleStats(
-                    completionRate.await(),
-                    actionCountByWeekEntity.await(),
-                    LocalDate.now(),
-                )
-                actionCountByWeek.value = mapActionCountByWeek(actionCountByWeekEntity.await())
-                actionCountByMonth.value = mapActionCountByMonth(actionCountByMonthEntity.await())
-                if (chartData.value is Result.Success) {
-                    switchChartType((chartData.value as Result.Success<ActionCountChart>).value.type)
-                }
-            } catch (e: Throwable) {
-                // Fail silently
+                // Query sequentially so a child failure cannot cancel the parent
+                // before the error state is published.
+                val completionRate = dao.getCompletionRate(habitId)
+                val weekly = dao.getActionCountByWeek(habitId)
+                val monthly = dao.getActionCountByMonth(habitId)
+                val summary = mapHabitSingleStats(completionRate, weekly, LocalDate.now())
+                val weeklyCounts = mapActionCountByWeek(weekly)
+                val monthlyCounts = mapActionCountByMonth(monthly)
+                ensureActive()
+                singleStats.value = summary
+                actionCountByWeek.value = weeklyCounts
+                actionCountByMonth.value = monthlyCounts
+                publishChart(selectedChartType)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                ensureActive()
+                chartData.value = Result.Failure(e)
                 telemetry.logNonFatal(e)
             }
-        }
+        }.also { statsJob = it }
     }
 
     fun toggleAction(habitId: Int, action: Action, date: LocalDate) {
@@ -141,17 +153,43 @@ class HabitDetailViewModel @Inject constructor(
         }
     }
 
+    fun beginEdit() {
+        if (mutableEditSaveState.value != HabitEditSaveState.Saving) {
+            mutableEditSaveState.value = HabitEditSaveState.Idle
+        }
+    }
+
     fun updateHabit(habit: Habit) {
+        val previous = mutableEditSaveState.value
+        if (previous != HabitEditSaveState.Idle && previous != HabitEditSaveState.Failed) return
+        if (!mutableEditSaveState.compareAndSet(previous, HabitEditSaveState.Saving)) return
         viewModelScope.launch {
-            dao.updateHabit(habit.toEntity(order = habitOrder ?: 0, archived = false))
-            fetchHabitDetails(habit.id)
+            try {
+                dao.updateHabit(habit.toEntity(order = habitOrder ?: 0, archived = false))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                mutableEditSaveState.value = HabitEditSaveState.Failed
+                telemetry.logNonFatal(e)
+                return@launch
+            }
+            // Refresh after confirmed persistence; do not classify refresh failure as a failed write.
+            fetchHabitDetails(habit.id).join()
+            mutableEditSaveState.value = HabitEditSaveState.Saved
         }
     }
 
     fun archiveHabit(habit: Habit) {
         viewModelScope.launch {
-            dao.updateHabit(habit.toEntity(order = habitOrder ?: 0, archived = true))
-            eventChannel.send(HabitDetailEvent.BackNavigation)
+            try {
+                dao.updateHabit(habit.toEntity(order = habitOrder ?: 0, archived = true))
+                eventChannel.send(HabitDetailEvent.BackNavigation)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                telemetry.logNonFatal(e)
+                eventChannel.send(HabitDetailEvent.ArchiveError)
+            }
         }
     }
 
@@ -169,6 +207,12 @@ class HabitDetailViewModel @Inject constructor(
     }
 
     fun switchChartType(newType: ActionCountChart.Type) {
+        selectedChartType = newType
+        // Cached values must not mask failed or incomplete database reads.
+        if (chartData.value is Result.Success) publishChart(newType)
+    }
+
+    private fun publishChart(newType: ActionCountChart.Type) {
         try {
             val items = when (newType) {
                 ActionCountChart.Type.Weekly -> mapActionCountByWeekListToItemList(

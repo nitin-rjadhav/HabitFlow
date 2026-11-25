@@ -18,7 +18,7 @@ package com.ofalvai.habittracker.feature.dashboard.ui.habitdetail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
@@ -31,18 +31,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
 import com.ofalvai.habittracker.core.model.Action
 import com.ofalvai.habittracker.core.ui.component.HorizontalMonthCalendar
 import com.ofalvai.habittracker.core.ui.recomposition.StableHolder
-import com.ofalvai.habittracker.core.ui.semantics.habitActionSemantics
 import com.ofalvai.habittracker.core.ui.theme.LocalAppColors
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 fun HabitCalendar(
@@ -74,9 +81,12 @@ private fun DayCell(
     onDayClick: (LocalDate, Action) -> Unit
 ) {
     val today = LocalDate.now()
+    val isCurrentMonth = day.position == DayPosition.MonthDate
+    val isFuture = day.date.isAfter(today)
+    val dateLabel = day.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
     val backgroundColor = if (action.toggled) {
         habitColor
-    } else if (day.position == DayPosition.MonthDate) {
+    } else if (isCurrentMonth && !isFuture) {
         LocalAppColors.current.gray1
     } else Color.Transparent
 
@@ -85,14 +95,20 @@ private fun DayCell(
     } else Modifier
     Box(
         modifier = Modifier
-            .habitActionSemantics(action)
+            .aspectRatio(1f)
+            .toggleable(value = action.toggled, enabled = isCurrentMonth && !isFuture, role = Role.Checkbox) { checked ->
+                onDayClick(day.date, action.copy(toggled = checked))
+            }
+            // Use the calendar date rather than the action timestamp (which is
+            // absent for untouched days). Keep one accessible control per day.
+            .clearAndSetSemantics {
+                contentDescription = dateLabel
+                role = Role.Checkbox
+                toggleableState = ToggleableState(action.toggled)
+            }
             .padding(4.dp)
             .then(todayModifier)
             .clip(CircleShape)
-            .clickable(enabled = day.position == DayPosition.MonthDate && !day.date.isAfter(today)) {
-                onDayClick(day.date, action.copy(toggled = !action.toggled))
-            }
-            .aspectRatio(1f)
             .background(backgroundColor, shape = CircleShape),
         contentAlignment = Alignment.Center
     ) {

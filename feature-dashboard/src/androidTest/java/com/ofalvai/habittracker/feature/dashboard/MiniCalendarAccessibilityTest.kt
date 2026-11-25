@@ -3,7 +3,18 @@ package com.ofalvai.habittracker.feature.dashboard
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import com.ofalvai.habittracker.core.ui.component.CalendarPager
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.Color
+import com.ofalvai.habittracker.core.model.Action
+import com.ofalvai.habittracker.core.ui.recomposition.StableHolder
+import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitCalendar
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.concurrent.atomic.AtomicReference
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -49,6 +60,174 @@ class MiniCalendarAccessibilityTest {
         }
     }
 
+    @Test
+    fun historyCalendarExposesDateAndTogglesToday() {
+        val today = LocalDate.now()
+        val label = today.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+        val observed = AtomicReference<Pair<LocalDate, Boolean>?>(null)
+        val actions = mutableStateOf(emptyList<Action>())
+        val month = mutableStateOf(YearMonth.from(today))
+        ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.setContent {
+                    PreviewTheme {
+                        Column {
+                            CalendarPager(
+                                yearMonth = StableHolder(month.value),
+                                onPreviousClick = { month.value = month.value.minusMonths(1) },
+                                onNextClick = { month.value = month.value.plusMonths(1) }
+                            )
+                            HabitCalendar(
+                                yearMonth = StableHolder(month.value),
+                                habitColor = Color.Green,
+                                actions = actions.value,
+                                onDayToggle = { date, action ->
+                                    observed.set(date to action.toggled)
+                                    actions.value = if (action.toggled) {
+                                        listOf(action.copy(timestamp = date.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()))
+                                    } else {
+                                        emptyList()
+                                    }
+                                },
+                                onMonthSwipe = {}
+                            )
+                        }
+                    }
+                }
+            }
+            clickCheckbox(expectedChecked = false, dateLabel = label)
+            waitForDayToggle(observed, today to true)
+            clickCheckbox(expectedChecked = true, dateLabel = label)
+            waitForDayToggle(observed, today to false)
+            // A second completion proves that undo restored the unchecked semantics.
+            clickCheckbox(expectedChecked = false, dateLabel = label)
+            waitForDayToggle(observed, today to true)
+
+            val tomorrow = today.plusDays(1)
+            if (YearMonth.from(tomorrow) != YearMonth.from(today)) {
+                scenario.onActivity { month.value = YearMonth.from(tomorrow) }
+            }
+            assertDisabledDate(tomorrow.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)))
+            assertEquals(today to true, observed.get())
+
+            // Return to the original month before testing both pager buttons.
+            scenario.onActivity { month.value = YearMonth.from(today) }
+            waitForAccessibleNode("Today's completed checkbox") {
+                findCheckbox(it, true, label)
+            }
+            var previousLabel = ""
+            var nextLabel = ""
+            var density = 1f
+            scenario.onActivity { activity ->
+                previousLabel = activity.getString(com.ofalvai.habittracker.core.ui.R.string.calendar_previous_month)
+                nextLabel = activity.getString(com.ofalvai.habittracker.core.ui.R.string.calendar_next_month)
+                density = activity.resources.displayMetrics.density
+            }
+            clickMonthButton(previousLabel, density)
+            val previousMonthDate = YearMonth.from(today).minusMonths(1).atDay(15)
+                .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+            waitForAccessibleNode("Previous month's day 15") {
+                findCheckbox(it, false, previousMonthDate)
+            }
+            clickMonthButton(nextLabel, density)
+            waitForAccessibleNode("Today's completed checkbox after navigation") {
+                findCheckbox(it, true, label)
+            }
+            assertEquals(today to true, observed.get())
+        }
+    }
+
+    private fun clickMonthButton(label: String, density: Float) {
+        waitForAccessibleNode("Month navigation: $label", onFound = { node ->
+            val bounds = android.graphics.Rect()
+            node.getBoundsInScreen(bounds)
+            // Allow one pixel of rounding in density conversion.
+            assertTrue("Month button width must be at least 48dp", bounds.width() + 1 >= 48 * density)
+            assertTrue("Month button height must be at least 48dp", bounds.height() + 1 >= 48 * density)
+            assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        }) { findMonthButton(it, label) }
+    }
+
+    private fun findMonthButton(node: AccessibilityNodeInfo, label: String): AccessibilityNodeInfo? {
+        if (node.isVisibleToUser && node.isEnabled && node.isClickable &&
+            node.contentDescription?.toString() == label) {
+            return AccessibilityNodeInfo.obtain(node)
+        }
+        for (index in 0 until node.childCount) {
+            val child = node.getChild(index) ?: continue
+            try {
+                val match = findMonthButton(child, label)
+                if (match != null) return match
+            } finally {
+                child.recycle()
+            }
+        }
+        return null
+    }
+
+    private fun waitForAccessibleNode(
+        description: String,
+        onFound: (AccessibilityNodeInfo) -> Unit = {},
+        find: (AccessibilityNodeInfo) -> AccessibilityNodeInfo?
+    ) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        repeat(40) {
+            val root = automation.rootInActiveWindow
+            if (root != null) {
+                try {
+                    val node = find(root)
+                    if (node != null) {
+                        try {
+                            onFound(node)
+                            return
+                        } finally {
+                            node.recycle()
+                        }
+                    }
+                } finally {
+                    root.recycle()
+                }
+            }
+            Thread.sleep(250)
+        }
+        throw AssertionError("Missing accessible node: $description")
+    }
+
+    private fun waitForDayToggle(
+        observed: AtomicReference<Pair<LocalDate, Boolean>?>,
+        expected: Pair<LocalDate, Boolean>
+    ) {
+        repeat(40) {
+            if (observed.get() == expected) return
+            Thread.sleep(250)
+        }
+        assertEquals(expected, observed.get())
+    }
+
+    private fun assertDisabledDate(dateLabel: String) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        repeat(40) {
+            val root = automation.rootInActiveWindow
+            if (root != null) {
+                try {
+                    val node = findCheckbox(root, false, dateLabel, expectedEnabled = false)
+                    if (node != null) {
+                        try {
+                            assertTrue("Future date must be disabled", !node.isEnabled)
+                            return
+                        } finally {
+                            node.recycle()
+                        }
+                    }
+                } finally {
+                    root.recycle()
+                }
+            }
+            Thread.sleep(250)
+        }
+        throw AssertionError("No disabled, unchecked calendar date: $dateLabel")
+    }
+
     private fun waitForState(state: AtomicBoolean, expected: Boolean) {
         repeat(40) {
             if (state.get() == expected) return
@@ -57,13 +236,13 @@ class MiniCalendarAccessibilityTest {
         assertEquals(expected, state.get())
     }
 
-    private fun clickCheckbox(expectedChecked: Boolean) {
+    private fun clickCheckbox(expectedChecked: Boolean, dateLabel: String? = null) {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         repeat(40) {
             val root = automation.rootInActiveWindow
             if (root != null) {
                 try {
-                    val checkbox = findCheckbox(root, expectedChecked)
+                    val checkbox = findCheckbox(root, expectedChecked, dateLabel)
                     if (checkbox != null) {
                         try {
                             assertTrue(checkbox.performAction(AccessibilityNodeInfo.ACTION_CLICK))
@@ -78,20 +257,62 @@ class MiniCalendarAccessibilityTest {
             }
             Thread.sleep(250)
         }
-        assertTrue("No clickable checkbox with checked=$expectedChecked", false)
+        val diagnostic = StringBuilder()
+        val root = automation.rootInActiveWindow
+        if (root == null) {
+            diagnostic.append("No active accessibility window")
+        } else {
+            try {
+                appendAccessibilityTree(root, diagnostic, 0)
+            } finally {
+                root.recycle()
+            }
+        }
+        val message = "No clickable checkbox with checked=$expectedChecked, date=$dateLabel"
+        // This test hosts only synthetic habit data. Print per-line diagnostics so
+        // CI retains the full tree even if the instrumentation failure is truncated.
+        diagnostic.lineSequence().forEach { android.util.Log.i("CalendarA11yTest", it) }
+        throw AssertionError("$message\n$diagnostic")
+    }
+
+    private fun appendAccessibilityTree(
+        node: AccessibilityNodeInfo,
+        output: StringBuilder,
+        depth: Int
+    ) {
+        val bounds = android.graphics.Rect()
+        node.getBoundsInScreen(bounds)
+        output.append("  ".repeat(depth))
+            .append("class=${node.className}, text=${node.text}, description=${node.contentDescription}")
+            .append(", state=${if (android.os.Build.VERSION.SDK_INT >= 30) node.stateDescription else null}")
+            .append(", clickable=${node.isClickable}, checkable=${node.isCheckable}, checked=${node.isChecked}")
+            .append(", enabled=${node.isEnabled}, visible=${node.isVisibleToUser}, bounds=$bounds")
+            .append('\n')
+        for (index in 0 until node.childCount) {
+            val child = node.getChild(index) ?: continue
+            try {
+                appendAccessibilityTree(child, output, depth + 1)
+            } finally {
+                child.recycle()
+            }
+        }
     }
 
     private fun findCheckbox(
         node: AccessibilityNodeInfo,
-        expectedChecked: Boolean
+        expectedChecked: Boolean,
+        dateLabel: String?,
+        expectedEnabled: Boolean = true
     ): AccessibilityNodeInfo? {
-        if (node.isClickable && node.isCheckable && node.isChecked == expectedChecked) {
+        if ((!expectedEnabled || node.isClickable) && node.isVisibleToUser &&
+            node.isEnabled == expectedEnabled && node.isCheckable && node.isChecked == expectedChecked &&
+            (dateLabel == null || node.contentDescription?.toString() == dateLabel)) {
             return AccessibilityNodeInfo.obtain(node)
         }
         for (index in 0 until node.childCount) {
             val child = node.getChild(index) ?: continue
             try {
-                val found = findCheckbox(child, expectedChecked)
+                val found = findCheckbox(child, expectedChecked, dateLabel, expectedEnabled)
                 if (found != null) return found
             } finally {
                 child.recycle()

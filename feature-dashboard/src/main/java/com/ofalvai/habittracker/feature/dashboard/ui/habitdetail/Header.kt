@@ -44,6 +44,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +60,7 @@ import com.ofalvai.habittracker.core.model.HabitWithActions
 import com.ofalvai.habittracker.core.ui.component.ErrorView
 import com.ofalvai.habittracker.core.ui.component.HabitColorPicker
 import com.ofalvai.habittracker.core.ui.component.SingleStat
+import com.ofalvai.habittracker.core.ui.component.TextFieldError
 import com.ofalvai.habittracker.core.ui.state.Result
 import com.ofalvai.habittracker.core.ui.theme.*
 import com.ofalvai.habittracker.feature.dashboard.R
@@ -72,9 +78,15 @@ internal fun HabitDetailHeader(
     onBack: () -> Unit,
     onSave: (Habit) -> Unit,
     onArchive: (Habit) -> Unit,
-    onDelete: (Habit) -> Unit
+    onDelete: (Habit) -> Unit,
+    editSaveState: HabitEditSaveState? = null,
+    onBeginEdit: () -> Unit = {},
+    showStats: Boolean = true
 ) {
     var isEditing by remember { mutableStateOf(false) }
+    LaunchedEffect(editSaveState) {
+        if (editSaveState == HabitEditSaveState.Saved) isEditing = false
+    }
 
     val backgroundColor by animateColorAsState(
         targetValue = when (habitDetailState) {
@@ -92,7 +104,10 @@ internal fun HabitDetailHeader(
         when (habitDetailState) {
             Result.Loading -> HabitDetailLoadingAppBar(onBack)
             is Result.Failure -> {
-                ErrorView(label = stringResource(R.string.habitdetails_error))
+                Column {
+                    HabitDetailLoadingAppBar(onBack)
+                    ErrorView(label = stringResource(R.string.habitdetails_error))
+                }
             }
             is Result.Success -> {
                 AnimatedVisibility(
@@ -104,11 +119,12 @@ internal fun HabitDetailHeader(
                         habitDetails = habitDetailState.value,
                         onBack = onBack,
                         onSave = {
-                            isEditing = false
+                            if (editSaveState == null) isEditing = false
                             onSave(it)
                         },
                         onArchive = onArchive,
-                        onDelete = onDelete
+                        onDelete = onDelete,
+                        editSaveState = editSaveState
                     )
                 }
 
@@ -116,9 +132,10 @@ internal fun HabitDetailHeader(
                     HabitHeaderContent(
                         habitDetails = habitDetailState.value,
                         singleStats = singleStats,
+                        showStats = showStats,
                         scrollState = scrollState,
                         onBack = onBack,
-                        onEdit = { isEditing = true }
+                        onEdit = { onBeginEdit(); isEditing = true }
                     )
                 }
             }
@@ -132,8 +149,10 @@ private fun HabitHeaderEditingContent(
     onBack: () -> Unit,
     onSave: (Habit) -> Unit,
     onArchive: (Habit) -> Unit,
-    onDelete: (Habit) -> Unit
+    onDelete: (Habit) -> Unit,
+    editSaveState: HabitEditSaveState?
 ) {
+    val saving = editSaveState == HabitEditSaveState.Saving
     var editingName by remember(habitDetails.habit.name) {
         mutableStateOf(habitDetails.habit.name)
     }
@@ -144,7 +163,9 @@ private fun HabitHeaderEditingContent(
         mutableStateOf(habitDetails.habit.color)
     }
     var isNameValid by remember { mutableStateOf(true) }
+    val nameErrorMessage = stringResource(R.string.habitdetails_edit_name_error)
     val onSaveClick = {
+        isNameValid = editingName.isNotBlank()
         if (isNameValid) {
             val newValue = habitDetails.habit.copy(
                 name = editingName, color = editingColor, notes = editingNotes
@@ -157,24 +178,42 @@ private fun HabitHeaderEditingContent(
         HabitDetailEditingAppBar(
             onBack = onBack,
             onSave = onSaveClick,
-            onArchive = { onArchive(habitDetails.habit) }
+            onArchive = { onArchive(habitDetails.habit) },
+            saving = saving
         )
+        if (editSaveState == HabitEditSaveState.Failed) {
+            TextFieldError(
+                modifier = Modifier.padding(horizontal = 32.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+                textError = stringResource(R.string.habitdetails_edit_save_error)
+            )
+        }
         OutlinedTextField(
             value = editingName,
+            enabled = !saving,
             onValueChange = {
                 editingName = it
                 isNameValid = it.isNotBlank()
             },
             label = { Text(stringResource(R.string.habitdetails_edit_name_label)) },
-            modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth(),
+            modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth().semantics {
+                if (!isNameValid) error(nameErrorMessage)
+            },
             isError = !isNameValid,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next
             )
         )
+        if (!isNameValid) {
+            TextFieldError(
+                modifier = Modifier.padding(horizontal = 32.dp),
+                textError = nameErrorMessage
+            )
+        }
         OutlinedTextField(
             value = editingNotes,
+            enabled = !saving,
             onValueChange = { editingNotes = it },
             label = { Text(stringResource(R.string.habitdetails_edit_notes_label)) },
             modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 16.dp).fillMaxWidth(),
@@ -184,7 +223,7 @@ private fun HabitHeaderEditingContent(
         )
         HabitColorPicker(
             color = editingColor,
-            onColorPick = { editingColor = it }
+            onColorPick = { if (!saving) editingColor = it }
         )
         // Destructive action is visually distinct from the non-destructive Archive.
         OutlinedButton(
@@ -193,6 +232,7 @@ private fun HabitHeaderEditingContent(
                 .padding(horizontal = 32.dp, vertical = 8.dp)
                 .heightIn(min = AppDimensions.minTouchTarget),
             onClick = { onDelete(habitDetails.habit) },
+            enabled = !saving,
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.error
             )
@@ -206,6 +246,7 @@ private fun HabitHeaderEditingContent(
 private fun HabitHeaderContent(
     habitDetails: HabitWithActions,
     singleStats: SingleStats,
+    showStats: Boolean,
     scrollState: ScrollState,
     onBack: () -> Unit,
     onEdit: () -> Unit
@@ -235,11 +276,13 @@ private fun HabitHeaderContent(
                     }
                 }
             }
-            SingleStatRow(
-                totalCount = singleStats.actionCount,
-                weeklyCount = singleStats.weeklyActionCount,
-                completionRate = singleStats.completionRate,
-            )
+            if (showStats) {
+                SingleStatRow(
+                    totalCount = singleStats.actionCount,
+                    weeklyCount = singleStats.weeklyActionCount,
+                    completionRate = singleStats.completionRate,
+                )
+            }
         }
     }
 }
@@ -312,19 +355,32 @@ private fun HabitDetailAppBar(
 private fun HabitDetailEditingAppBar(
     onBack: () -> Unit,
     onSave: () -> Unit,
-    onArchive: () -> Unit
+    onArchive: () -> Unit,
+    saving: Boolean
 ) {
     TopAppBar(
-        title = { },
+        title = { if (saving) Text(stringResource(R.string.habitdetails_edit_saving)) },
         navigationIcon = {
             IconButton(onClick = onBack) { TopAppBarNavIcon() }
         },
         actions = {
-            IconButton(onClick = onSave) {
-                Icon(Icons.Rounded.Check, stringResource(coreR.string.common_save))
+            val saveLabel = stringResource(coreR.string.common_save)
+            val archiveLabel = stringResource(coreR.string.common_archive)
+            IconButton(
+                onClick = onSave,
+                enabled = !saving,
+                modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .semantics { contentDescription = saveLabel }
+            ) {
+                Icon(Icons.Rounded.Check, contentDescription = null)
             }
-            IconButton(onClick = onArchive) {
-                Icon(CoreIcons.Archive, stringResource(coreR.string.common_archive))
+            IconButton(
+                onClick = onArchive,
+                enabled = !saving,
+                modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .semantics { contentDescription = archiveLabel }
+            ) {
+                Icon(CoreIcons.Archive, contentDescription = null)
             }
         },
         colors = topAppBarColors(),

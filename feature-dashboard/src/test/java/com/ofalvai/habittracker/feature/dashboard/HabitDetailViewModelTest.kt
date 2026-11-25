@@ -11,6 +11,14 @@ import com.ofalvai.habittracker.feature.dashboard.repo.ActionRepository
 import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitDetailEvent
 import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitDetailViewModel
 import kotlinx.coroutines.test.runTest
+import com.ofalvai.habittracker.core.database.entity.ActionCompletionRate
+import com.ofalvai.habittracker.core.ui.state.Result
+import com.ofalvai.habittracker.feature.dashboard.ui.model.ActionCountChart
+import java.time.Instant
+import kotlinx.coroutines.test.runCurrent
+import com.ofalvai.habittracker.feature.dashboard.ui.habitdetail.HabitEditSaveState
+import com.ofalvai.habittracker.core.database.entity.HabitWithActions
+import com.ofalvai.habittracker.feature.dashboard.mapper.toEntity
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -48,6 +56,59 @@ class HabitDetailViewModelTest {
             expectNoEvents()
         }
         verify(dao).deleteHabit(HabitById(42))
+        verify(telemetry).logNonFatal(failure)
+    }
+
+    @Test fun archiveFailureReportsErrorWithoutNavigating() = runTest {
+        val entity = habit.toEntity(order = 0, archived = true)
+        val failure = IllegalStateException("Synthetic archive failure")
+        whenever(dao.updateHabit(entity)).thenThrow(failure)
+        val vm = viewModel()
+        vm.habitDetailEvent.test {
+            vm.archiveHabit(habit)
+            assertEquals(HabitDetailEvent.ArchiveError, awaitItem())
+            expectNoEvents()
+        }
+        verify(dao).updateHabit(entity)
+        verify(telemetry).logNonFatal(failure)
+    }
+
+    @Test fun failedEditCanBeRetriedWithoutDuplicateUpdate() = runTest {
+        val entity = habit.toEntity(order = 0, archived = false)
+        val failure = IllegalStateException("Synthetic update failure")
+        whenever(dao.updateHabit(entity)).thenThrow(failure).thenReturn(Unit)
+        whenever(dao.getHabitWithActions(habit.id)).thenReturn(HabitWithActions(entity, emptyList()))
+        val vm = viewModel()
+        vm.updateHabit(habit)
+        runCurrent()
+        assertEquals(HabitEditSaveState.Failed, vm.editSaveState.value)
+        vm.updateHabit(habit)
+        vm.updateHabit(habit)
+        runCurrent()
+        assertEquals(HabitEditSaveState.Saved, vm.editSaveState.value)
+        verify(dao, times(2)).updateHabit(entity)
+        vm.beginEdit()
+        assertEquals(HabitEditSaveState.Idle, vm.editSaveState.value)
+    }
+
+    @Test fun statsFailureIsNotReplacedByEmptyChartAndRetryRecoversSelectedType() = runTest {
+        val failure = IllegalStateException("Synthetic statistics query failure")
+        whenever(dao.getCompletionRate(habit.id))
+            .thenThrow(failure).thenReturn(ActionCompletionRate(Instant.EPOCH, 0))
+        whenever(dao.getActionCountByWeek(habit.id)).thenReturn(emptyList())
+        whenever(dao.getActionCountByMonth(habit.id)).thenReturn(emptyList())
+        val vm = viewModel()
+        assertEquals(Result.Loading, vm.chartData.value)
+        vm.fetchHabitStats(habit.id).join()
+        assertEquals(Result.Failure(failure), vm.chartData.value)
+        vm.switchChartType(ActionCountChart.Type.Monthly)
+        assertEquals(Result.Failure(failure), vm.chartData.value)
+        val retry = vm.fetchHabitStats(habit.id)
+        assertEquals(Result.Loading, vm.chartData.value)
+        retry.join()
+        val chart = vm.chartData.value as Result.Success
+        assertEquals(ActionCountChart.Type.Monthly, chart.value.type)
+        assertEquals(0, vm.singleStats.value.actionCount)
         verify(telemetry).logNonFatal(failure)
     }
 }

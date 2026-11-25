@@ -73,6 +73,7 @@ import com.ofalvai.habittracker.core.ui.theme.AppTextStyle
 import com.ofalvai.habittracker.core.ui.theme.CoreIcons
 import com.ofalvai.habittracker.feature.dashboard.R
 import com.ofalvai.habittracker.feature.dashboard.ui.DashboardIcons
+import com.ofalvai.habittracker.feature.dashboard.ui.DashboardLoading
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.compact.CompactHabitList
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.fiveday.FiveDayHabitList
 import com.ofalvai.habittracker.feature.dashboard.ui.dashboard.view.minicalendar.MiniCalendarHabitList
@@ -119,25 +120,51 @@ fun DashboardScreen(
         onDismissed = { configDialogOpen = false }
     )
 
+    DashboardContent(
+        habits = habits,
+        config = config,
+        onboardingState = onboardingState,
+        exerciseActionIds = exerciseActionIds,
+        onAddHabitClick = navigateToAddHabit,
+        onConfigClick = onConfigClick,
+        onActionToggle = onActionToggle,
+        onHabitDetail = navigateToDetails,
+        onSettingsClick = navigateToSettings,
+        onArchiveClick = navigateToArchive,
+        onExportClick = navigateToExport,
+        onMove = onMove
+    )
+}
+
+@Composable
+internal fun DashboardContent(
+    habits: Result<ImmutableList<HabitWithActions>>,
+    config: DashboardConfig,
+    onboardingState: OnboardingState?,
+    exerciseActionIds: Set<Int>,
+    onAddHabitClick: () -> Unit,
+    onConfigClick: () -> Unit,
+    onActionToggle: (Action, Habit, Int) -> Unit,
+    onHabitDetail: (HabitId) -> Unit,
+    onSettingsClick: () -> Unit,
+    onArchiveClick: () -> Unit,
+    onExportClick: () -> Unit,
+    onMove: (ItemMoveEvent) -> Unit
+) {
     when (habits) {
-        is Result.Success -> {
-            LoadedDashboard(
-                habits = (habits as Result.Success<ImmutableList<HabitWithActions>>).value,
-                config,
-                onboardingState,
-                exerciseActionIds,
-                navigateToAddHabit,
-                onConfigClick,
-                onActionToggle,
-                navigateToDetails,
-                navigateToSettings,
-                navigateToArchive,
-                navigateToExport, // TODO: unify click event listeners
-                onMove
-            )
+        is Result.Success -> LoadedDashboard(
+            habits.value, config, onboardingState, exerciseActionIds,
+            onAddHabitClick, onConfigClick, onActionToggle, onHabitDetail,
+            onSettingsClick, onArchiveClick, onExportClick, onMove
+        )
+        else -> Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            DashboardAppBar(onConfigClick, onSettingsClick, onArchiveClick, onExportClick)
+            when (habits) {
+                Result.Loading -> DashboardLoading(stringResource(R.string.dashboard_loading))
+                is Result.Failure -> ErrorView(label = stringResource(R.string.dashboard_error))
+                is Result.Success -> Unit
+            }
         }
-        is Result.Failure -> ErrorView(label = stringResource(R.string.dashboard_error))
-        Result.Loading -> {}
     }
 }
 

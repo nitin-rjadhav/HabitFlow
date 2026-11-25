@@ -26,6 +26,7 @@ import com.ofalvai.habittracker.core.database.entity.Habit
 import com.ofalvai.habittracker.core.database.entity.HabitById
 import com.ofalvai.habittracker.core.database.entity.HabitWithActions
 import com.ofalvai.habittracker.core.testing.BaseInstrumentedTest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -251,6 +252,54 @@ class HabitEntityTest : BaseInstrumentedTest() {
             )
             assertEquals(expectedHabitsWithActions, awaitItem())
         }
+    }
+
+    @Test
+    fun archiveUnarchiveAndDeletePreserveOtherHabitHistory() = runTest {
+        val target = Habit(
+            id = 51, name = "Meditation", color = Habit.Color.Green,
+            order = 0, archived = false, notes = "Keep history"
+        )
+        val other = Habit(
+            id = 52, name = "Read", color = Habit.Color.Yellow,
+            order = 1, archived = false, notes = "Unrelated habit"
+        )
+        val history = listOf(
+            Action(id = 101, habit_id = target.id,
+                timestamp = Instant.parse("2021-05-30T10:15:30Z")),
+            Action(id = 102, habit_id = target.id,
+                timestamp = Instant.parse("2021-05-31T10:15:30Z"))
+        )
+        val otherHistory = listOf(
+            Action(id = 103, habit_id = other.id,
+                timestamp = Instant.parse("2021-05-31T12:00:00Z"))
+        )
+        habitDao.insertHabits(listOf(target, other))
+        habitDao.insertActions(history + otherHistory)
+
+        val archived = target.copy(archived = true)
+        habitDao.updateHabit(archived)
+        assertEquals(listOf(other.id), habitDao.getActiveHabitsWithActions().first().map { it.habit.id })
+        val archivedEntry = habitDao.getArchivedHabitsWithActions().first().single()
+        assertEquals(archived, archivedEntry.habit)
+        assertEquals(history.sortedBy { it.id }, archivedEntry.actions.sortedBy { it.id })
+
+        habitDao.unarchiveHabit(target.id)
+        assertEquals(emptyList<HabitWithActions>(), habitDao.getArchivedHabitsWithActions().first())
+        assertEquals(listOf(target.id, other.id),
+            habitDao.getActiveHabitsWithActions().first().map { it.habit.id })
+        assertEquals(target, habitDao.getHabitWithActions(target.id).habit)
+        assertEquals(history.sortedBy { it.id },
+            habitDao.getActionsForHabit(target.id).sortedBy { it.id })
+
+        // Permanently deleting the selected archived habit must not affect
+        // unrelated habits or their action history.
+        habitDao.updateHabit(archived)
+        habitDao.deleteHabit(HabitById(target.id))
+        assertEquals(emptyList<HabitWithActions>(), habitDao.getArchivedHabitsWithActions().first())
+        assertEquals(emptyList<Action>(), habitDao.getActionsForHabit(target.id))
+        assertEquals(listOf(other), habitDao.getHabits())
+        assertEquals(otherHistory, habitDao.getActionsForHabit(other.id))
     }
 
     @Test
