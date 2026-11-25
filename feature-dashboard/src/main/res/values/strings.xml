@@ -21,6 +21,8 @@
     <string name="addhabit_notes_label">Notes</string>
     <string name="addhabit_notes_description">Recording the exact time and location of the new habit increases the odds of sticking to it. Avoid vague habits like \"Exercise more\".</string>
     <string name="addhabit_save">Create habit</string>
+    <string name="addhabit_saving">Saving habit…</string>
+    <string name="addhabit_save_error">Unable to create habit. Please try again.</string>
 
     <string name="dashboard_title">My habits</string>
     <string name="dashboard_exercise_completion_badge">Completed via Health Connect</string>

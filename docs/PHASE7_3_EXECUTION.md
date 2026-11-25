@@ -56,3 +56,7 @@
 ## Verified checkpoint — Archive lifecycle and UI states
 - PR #47 commit `e5acc37`: [build/unit #325](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45573715444) and [emulator #306](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45573715475) passed. Logs confirm 53 database tests (including the added archive lifecycle test), 1 Five-Day, 2 calendar and 5 isolated edit/delete tests.
 - Added localized dashboard/detail/statistics loading feedback, retained dashboard navigation during loading and failure, and retained Back navigation on detail failure. Avoid showing a second misleading statistics error when habit details fail. Added isolated UI-state tests; CI execution pending.
+
+## Verified checkpoint — Dashboard/history states
+- PR #47 commit `6ab2dc3`: [build/unit #326](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45583090789) and [emulator #307](https://github.com/nitin-rjadhav/HabitFlow/actions/runs/45583090691) passed; logs confirm 1 Five-Day, 2 calendar, 53 database and 7 isolated Compose tests (63 total).
+- Create audit identified silently swallowed insertion failures and duplicate-save risk. Added explicit save state, accessible inline failure feedback, guarded repeated submission and tests for retry, duplicate prevention and post-insert onboarding failure. New CI pending. Edit/Archive persistence failures, statistics state wiring and physical-device font/contrast/TalkBack remain to review. No final acceptance claimed.
